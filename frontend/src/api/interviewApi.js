@@ -1,19 +1,23 @@
 import axios from "axios";
 
 const API =
-  "/api/interview";
+  axios.create({
+    baseURL:
+      "http://localhost:5000/api/interview",
+  });
 
 export const startInterview =
   async (resumeSummary) => {
-    const response =
-      await axios.post(
-        `${API}/start`,
+
+    const res =
+      await API.post(
+        "/start",
         {
           resumeSummary,
         }
       );
 
-    return response.data;
+    return res.data;
   };
 
 export const sendAnswer =
@@ -21,29 +25,29 @@ export const sendAnswer =
     sessionId,
     answer
   ) => {
-    const response =
-      await axios.post(
-        `${API}/reply`,
+
+    const res =
+      await API.post(
+        "/reply",
         {
           sessionId,
           answer,
         }
       );
 
-    return response.data;
+    return res.data;
   };
 
 export const finishInterview =
-  async (
-    sessionId
-  ) => {
-    const response =
-      await axios.post(
-        `${API}/finish`,
+  async (sessionId) => {
+
+    const res =
+      await API.post(
+        "/finish",
         {
           sessionId,
         }
       );
 
-    return response.data;
+    return res.data;
   };
