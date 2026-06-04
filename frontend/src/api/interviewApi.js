@@ -1,23 +1,19 @@
 import axios from "axios";
 
 const API =
-  axios.create({
-    baseURL:
-      "http://localhost:5000/api/interview",
-  });
+  "https://ai-mock-interview-system-qjab.onrender.com/api/interview";
 
 export const startInterview =
   async (resumeSummary) => {
-
-    const res =
-      await API.post(
-        "/start",
+    const response =
+      await axios.post(
+        `${API}/start`,
         {
           resumeSummary,
         }
       );
 
-    return res.data;
+    return response.data;
   };
 
 export const sendAnswer =
@@ -25,29 +21,29 @@ export const sendAnswer =
     sessionId,
     answer
   ) => {
-
-    const res =
-      await API.post(
-        "/reply",
+    const response =
+      await axios.post(
+        `${API}/reply`,
         {
           sessionId,
           answer,
         }
       );
 
-    return res.data;
+    return response.data;
   };
 
 export const finishInterview =
-  async (sessionId) => {
-
-    const res =
-      await API.post(
-        "/finish",
+  async (
+    sessionId
+  ) => {
+    const response =
+      await axios.post(
+        `${API}/finish`,
         {
           sessionId,
         }
       );
 
-    return res.data;
+    return response.data;
   };
