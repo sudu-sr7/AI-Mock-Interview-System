@@ -1,10 +1,18 @@
+import { useState } from "react";
+
 function Result() {
+
   const result =
     JSON.parse(
       localStorage.getItem(
         "result"
       )
     );
+
+  const [
+    showAnalysis,
+    setShowAnalysis,
+  ] = useState(false);
 
   return (
     <div className="result-page">
@@ -41,6 +49,114 @@ function Result() {
         </div>
 
       </div>
+
+      <div
+        style={{
+          textAlign:
+            "center",
+          marginBottom:
+            "35px",
+        }}
+      >
+        <button
+          className="primary-btn"
+          onClick={() =>
+            setShowAnalysis(
+              !showAnalysis
+            )
+          }
+        >
+          {showAnalysis
+            ? "Hide Deduction Analysis"
+            : "Why Were Marks Deducted?"}
+        </button>
+      </div>
+
+      {showAnalysis && (
+
+        <div className="deduction-section">
+
+          <div className="deduction-card">
+
+            <h2>
+              Technical Score Analysis
+            </h2>
+
+            <ul>
+              {result
+                ?.deductionAnalysis
+                ?.technical
+                ?.map(
+                  (
+                    item,
+                    index
+                  ) => (
+                    <li
+                      key={index}
+                    >
+                      {item}
+                    </li>
+                  )
+                )}
+            </ul>
+
+          </div>
+
+          <div className="deduction-card">
+
+            <h2>
+              Communication Score Analysis
+            </h2>
+
+            <ul>
+              {result
+                ?.deductionAnalysis
+                ?.communication
+                ?.map(
+                  (
+                    item,
+                    index
+                  ) => (
+                    <li
+                      key={index}
+                    >
+                      {item}
+                    </li>
+                  )
+                )}
+            </ul>
+
+          </div>
+
+          <div className="deduction-card">
+
+            <h2>
+              Confidence Score Analysis
+            </h2>
+
+            <ul>
+              {result
+                ?.deductionAnalysis
+                ?.confidence
+                ?.map(
+                  (
+                    item,
+                    index
+                  ) => (
+                    <li
+                      key={index}
+                    >
+                      {item}
+                    </li>
+                  )
+                )}
+            </ul>
+
+          </div>
+
+        </div>
+
+      )}
 
       <div className="feedback-section">
 

@@ -28,8 +28,17 @@ function Interview() {
   const [seconds, setSeconds] =
     useState(1800);
 
+  const [questionTimer, setQuestionTimer] =
+    useState(30);
+
   const [error, setError] =
     useState("");
+
+  const [skipMessage, setSkipMessage] =
+    useState("");
+
+  const [autoSubmitting, setAutoSubmitting] =
+    useState(false);
 
   useEffect(() => {
     setQuestion(
@@ -56,6 +65,132 @@ function Interview() {
       clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+
+    if (autoSubmitting)
+      return;
+
+    const inactivityTimer =
+      setInterval(() => {
+
+        setQuestionTimer(
+          (prev) => {
+
+            if (prev <= 1) {
+
+              clearInterval(
+                inactivityTimer
+              );
+
+              handleAutoSkip();
+
+              return 0;
+            }
+
+            return prev - 1;
+
+          }
+        );
+
+      }, 1000);
+
+    return () =>
+      clearInterval(
+        inactivityTimer
+      );
+
+  }, [
+    question,
+    autoSubmitting,
+  ]);
+
+  const resetQuestionTimer =
+    () => {
+      setQuestionTimer(30);
+    };
+
+  const handleAutoSkip =
+    async () => {
+
+      if (autoSubmitting)
+        return;
+
+      setAutoSubmitting(true);
+
+      try {
+
+        const sessionId =
+          localStorage.getItem(
+            "sessionId"
+          );
+
+        const response =
+          await sendAnswer(
+            sessionId,
+            "",
+            true
+          );
+
+        if (
+          response.completed
+        ) {
+
+          const result =
+            await finishInterview(
+              sessionId
+            );
+
+          localStorage.setItem(
+            "result",
+            JSON.stringify(
+              result
+            )
+          );
+
+          navigate("/result");
+
+          return;
+        }
+
+        setSkipMessage(
+          "Question skipped due to inactivity."
+        );
+
+        setTimeout(() => {
+          setSkipMessage(
+            ""
+          );
+        }, 4000);
+
+        setQuestion(
+          response.question
+        );
+
+        setQuestionNumber(
+          response.questionNumber
+        );
+
+        setAnswer("");
+
+        setQuestionTimer(
+          30
+        );
+
+      } catch (error) {
+
+        console.error(
+          error
+        );
+
+      } finally {
+
+        setAutoSubmitting(
+          false
+        );
+
+      }
+    };
+
   const handleSend =
     async () => {
 
@@ -63,18 +198,22 @@ function Interview() {
         answer.trim();
 
       if (!cleaned) {
+
         setError(
           "Please provide an answer before continuing."
         );
+
         return;
       }
 
       if (
         cleaned.length < 25
       ) {
+
         setError(
           "Answer must contain at least 25 characters."
         );
+
         return;
       }
 
@@ -109,7 +248,9 @@ function Interview() {
             )
           );
 
-          navigate("/result");
+          navigate(
+            "/result"
+          );
 
           return;
         }
@@ -124,23 +265,33 @@ function Interview() {
 
         setAnswer("");
 
+        setQuestionTimer(
+          30
+        );
+
       } catch (error) {
 
         if (
           error?.response?.data
             ?.message
         ) {
+
           setError(
             error.response.data
               .message
           );
+
         } else {
+
           setError(
             "Failed to submit answer."
           );
+
         }
 
-        console.error(error);
+        console.error(
+          error
+        );
       }
     };
 
@@ -175,12 +326,30 @@ function Interview() {
 
       </div>
 
+      <div
+        style={{
+          marginBottom:
+            "15px",
+          fontWeight:
+            "600",
+          color:
+            questionTimer <= 10
+              ? "#ef4444"
+              : "#2563eb",
+        }}
+      >
+        Next question in:
+        {" "}
+        {questionTimer}s
+      </div>
+
       <div className="progress-container">
 
         <div
           className="progress-fill"
           style={{
-            width: `${progress}%`,
+            width:
+              `${progress}%`,
           }}
         />
 
@@ -205,13 +374,32 @@ function Interview() {
         <textarea
           rows="8"
           value={answer}
-          onChange={(e) =>
+          onChange={(e) => {
+
             setAnswer(
               e.target.value
-            )
-          }
+            );
+
+            resetQuestionTimer();
+
+          }}
           placeholder="Type your answer here..."
         />
+
+        {skipMessage && (
+          <p
+            style={{
+              color:
+                "#f59e0b",
+              marginTop:
+                "10px",
+              fontWeight:
+                "600",
+            }}
+          >
+            {skipMessage}
+          </p>
+        )}
 
         {error && (
           <p

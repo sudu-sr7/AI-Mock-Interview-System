@@ -8,10 +8,21 @@ function analyzeAnswers(messages) {
   let totalWords = 0;
   let meaningfulAnswers = 0;
   let emptyAnswers = 0;
+  let skippedAnswers = 0;
 
   answers.forEach((answer) => {
-    const wordCount = answer.content
-      .trim()
+    const content =
+      answer.content.trim();
+
+    if (
+      content ===
+      "[Skipped due to inactivity]"
+    ) {
+      skippedAnswers++;
+      return;
+    }
+
+    const wordCount = content
       .split(/\s+/)
       .filter(Boolean).length;
 
@@ -31,6 +42,7 @@ function analyzeAnswers(messages) {
     totalWords,
     meaningfulAnswers,
     emptyAnswers,
+    skippedAnswers,
   };
 }
 
@@ -67,7 +79,10 @@ export async function scoreInterview(
 
   if (
     stats.totalAnswers === 0 ||
-    stats.meaningfulAnswers === 0
+    (
+      stats.meaningfulAnswers === 0 &&
+      stats.skippedAnswers === 0
+    )
   ) {
     return {
       overallScore: 5,
@@ -95,6 +110,18 @@ export async function scoreInterview(
         "Review core technical concepts",
       ],
 
+      deductionAnalysis: {
+        technical: [
+          "No meaningful technical responses were provided during the interview."
+        ],
+        communication: [
+          "Most responses were either empty or too short to evaluate communication skills."
+        ],
+        confidence: [
+          "There was insufficient information to assess confidence accurately."
+        ],
+      },
+
       transcript,
     };
   }
@@ -112,53 +139,45 @@ You are a senior software engineering hiring manager.
 
 Evaluate ONLY the candidate answers.
 
-IMPORTANT:
+IMPORTANT RULES:
 
-Scores MUST be between 0 and 100.
+1. Scores MUST be between 0 and 100.
+2. Return ONLY valid JSON.
+3. Do NOT use markdown.
+4. Ignore interviewer questions while scoring.
+5. If a question was skipped, apply only a small penalty.
+6. Deduction analysis must be specific and understandable.
+7. Do not write generic feedback like:
+   "weak technical skills"
+   "poor communication"
 
-DO NOT use a 1-10 scale.
-
-Identify:
-
-1. Technical Score
-2. Communication Score
-3. Confidence Score
-4. Overall Score
-5. Strengths
-6. Improvements
-7. Weak Areas
-8. Recommendations
-
-Weak Areas should contain technologies,
-concepts or skills that require improvement.
+Instead explain exactly why marks were reduced.
 
 Examples:
 
-[
- "Machine Learning",
- "NLP",
- "System Design",
- "REST APIs"
-]
+GOOD:
+"You explained the project outcome but did not explain why LSTM was chosen over traditional machine learning algorithms."
 
-Recommendations should be specific learning suggestions.
+GOOD:
+"Several answers lacked examples which made it difficult to evaluate your practical experience."
 
-Return ONLY valid JSON.
+BAD:
+"Weak technical skills"
 
-Format:
+Return JSON in EXACT format:
 
 {
   "overallScore": 85,
-  "technical": 88,
-  "communication": 82,
+  "technical": 82,
+  "communication": 88,
   "confidence": 84,
 
   "strengths": [
-    "strength 1"
+    "strength"
   ],
 
   "improvements": [
-    "improvement 1"
+    "improvement"
   ],
 
   "weakAreas": [
@@ -166,8 +185,23 @@ Format:
   ],
 
   "recommendations": [
-    "Study model evaluation metrics"
-  ]
+    "recommendation"
+  ],
+
+  "deductionAnalysis": {
+    "technical": [
+      "reason 1",
+      "reason 2"
+    ],
+    "communication": [
+      "reason 1",
+      "reason 2"
+    ],
+    "confidence": [
+      "reason 1",
+      "reason 2"
+    ]
+  }
 }
 
 Interview Conversation:
@@ -176,6 +210,7 @@ ${conversation}
 `;
 
   try {
+
     const response =
       await openai.chat.completions.create({
         model: "gpt-4o-mini",
@@ -234,9 +269,18 @@ ${conversation}
       recommendations:
         result.recommendations ?? [],
 
+      deductionAnalysis:
+        result.deductionAnalysis ?? {
+          technical: [],
+          communication: [],
+          confidence: [],
+        },
+
       transcript,
     };
+
   } catch (error) {
+
     console.error(
       "Scoring Error:",
       error
@@ -259,6 +303,12 @@ ${conversation}
       weakAreas: [],
 
       recommendations: [],
+
+      deductionAnalysis: {
+        technical: [],
+        communication: [],
+        confidence: [],
+      },
 
       transcript,
     };

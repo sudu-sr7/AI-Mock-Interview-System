@@ -49,12 +49,16 @@ router.post(
         sessionId,
         question: firstQuestion,
       });
+
     } catch (error) {
+
       console.error(error);
 
       res.status(500).json({
-        error: "Failed to start interview",
+        error:
+          "Failed to start interview",
       });
+
     }
   }
 );
@@ -62,35 +66,14 @@ router.post(
 router.post(
   "/reply",
   async (req, res) => {
+
     try {
 
       const {
         sessionId,
         answer,
+        skipped = false,
       } = req.body;
-
-      const cleaned =
-        answer?.trim();
-
-      if (!cleaned) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "Answer cannot be empty.",
-          });
-      }
-
-      if (
-        cleaned.length < 25
-      ) {
-        return res
-          .status(400)
-          .json({
-            message:
-              "Please provide a more detailed answer.",
-          });
-      }
 
       const interview =
         await Interview.findOne({
@@ -98,18 +81,56 @@ router.post(
         });
 
       if (!interview) {
+
         return res
           .status(404)
           .json({
             message:
               "Interview not found",
           });
+
+      }
+
+      let finalAnswer =
+        answer?.trim() || "";
+
+      if (!skipped) {
+
+        if (!finalAnswer) {
+
+          return res
+            .status(400)
+            .json({
+              message:
+                "Answer cannot be empty.",
+            });
+
+        }
+
+        if (
+          finalAnswer.length < 25
+        ) {
+
+          return res
+            .status(400)
+            .json({
+              message:
+                "Please provide a more detailed answer.",
+            });
+
+        }
+
+      } else {
+
+        finalAnswer =
+          "[Skipped due to inactivity]";
+
       }
 
       interview.messages.push({
         role: "user",
         content:
-          cleaned,
+          finalAnswer,
       });
 
       const elapsedMinutes =
@@ -154,6 +175,7 @@ Have a wonderful day.`;
           completed: true,
           closingMessage,
         });
+
       }
 
       const nextQuestion =
@@ -182,18 +204,18 @@ Have a wonderful day.`;
         remainingQuestions:
           MAX_QUESTIONS -
           interview.questionCount,
+        skipped,
       });
 
     } catch (error) {
 
       console.error(error);
 
-      res
-        .status(500)
-        .json({
-          error:
-            "Failed to process answer",
-        });
+      res.status(500).json({
+        error:
+          "Failed to process answer",
+      });
+
     }
   }
 );
@@ -201,6 +223,7 @@ Have a wonderful day.`;
 router.post(
   "/finish",
   async (req, res) => {
+
     try {
 
       const { sessionId } =
@@ -212,10 +235,14 @@ router.post(
         });
 
       if (!interview) {
-        return res.status(404).json({
-          message:
-            "Interview not found",
-        });
+
+        return res
+          .status(404)
+          .json({
+            message:
+              "Interview not found",
+          });
+
       }
 
       const result =
@@ -252,6 +279,7 @@ router.post(
           });
 
         }
+
       }
 
       const finalResult = {
