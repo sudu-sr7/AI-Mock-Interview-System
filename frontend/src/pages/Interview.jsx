@@ -28,8 +28,17 @@ function Interview() {
   const [seconds, setSeconds] =
     useState(1800);
 
-  const [questionTimer, setQuestionTimer] =
-    useState(30);
+  const [phase, setPhase] =
+    useState("thinking");
+
+  const [phaseTimer, setPhaseTimer] =
+    useState(10);
+
+  const [showPresencePopup, setShowPresencePopup] =
+    useState(false);
+
+  const [presenceCountdown, setPresenceCountdown] =
+    useState(10);
 
   const [error, setError] =
     useState("");
@@ -66,47 +75,93 @@ function Interview() {
   }, []);
 
   useEffect(() => {
+    setPhase("thinking");
+    setPhaseTimer(10);
+    setShowPresencePopup(false);
+    setPresenceCountdown(10);
+  }, [question]);
 
-    if (autoSubmitting)
+  useEffect(() => {
+    if (autoSubmitting || showPresencePopup) {
       return;
+    }
 
-    const inactivityTimer =
-      setInterval(() => {
+    if (phase === "thinking") {
+      if (phaseTimer <= 0) {
+        setPhase("inactivity");
+        setPhaseTimer(30);
+        return;
+      }
 
-        setQuestionTimer(
-          (prev) => {
-
+      const bufferTimer =
+        setInterval(() => {
+          setPhaseTimer((prev) => {
             if (prev <= 1) {
-
-              clearInterval(
-                inactivityTimer
-              );
-
-              handleAutoSkip();
-
               return 0;
             }
 
             return prev - 1;
+          });
+        }, 1000);
 
+      return () =>
+        clearInterval(bufferTimer);
+    }
+
+    if (phase === "inactivity") {
+      if (phaseTimer <= 0) {
+        setShowPresencePopup(true);
+        setPresenceCountdown(10);
+        return;
+      }
+
+      const inactivityTimer =
+        setInterval(() => {
+          setPhaseTimer((prev) => {
+            if (prev <= 1) {
+              return 0;
+            }
+
+            return prev - 1;
+          });
+        }, 1000);
+
+      return () =>
+        clearInterval(inactivityTimer);
+    }
+  }, [phase, phaseTimer, showPresencePopup, autoSubmitting]);
+
+  useEffect(() => {
+    if (!showPresencePopup || autoSubmitting) {
+      return;
+    }
+
+    if (presenceCountdown <= 0) {
+      handleAutoSkip();
+      return;
+    }
+
+    const countdownTimer =
+      setInterval(() => {
+        setPresenceCountdown((prev) => {
+          if (prev <= 1) {
+            return 0;
           }
-        );
 
+          return prev - 1;
+        });
       }, 1000);
 
     return () =>
-      clearInterval(
-        inactivityTimer
-      );
-
-  }, [
-    question,
-    autoSubmitting,
-  ]);
+      clearInterval(countdownTimer);
+  }, [showPresencePopup, presenceCountdown, autoSubmitting]);
 
   const resetQuestionTimer =
     () => {
-      setQuestionTimer(30);
+      setPhase("inactivity");
+      setPhaseTimer(30);
+      setShowPresencePopup(false);
+      setPresenceCountdown(10);
     };
 
   const handleAutoSkip =
@@ -115,6 +170,8 @@ function Interview() {
       if (autoSubmitting)
         return;
 
+      setShowPresencePopup(false);
+      setPresenceCountdown(10);
       setAutoSubmitting(true);
 
       try {
@@ -171,10 +228,6 @@ function Interview() {
         );
 
         setAnswer("");
-
-        setQuestionTimer(
-          30
-        );
 
       } catch (error) {
 
@@ -265,10 +318,6 @@ function Interview() {
 
         setAnswer("");
 
-        setQuestionTimer(
-          30
-        );
-
       } catch (error) {
 
         if (
@@ -307,6 +356,32 @@ function Interview() {
     (questionNumber / 15) *
     100;
 
+  const timerLabel =
+    showPresencePopup
+      ? "Are you still there?"
+      : phase === "thinking"
+      ? "Thinking buffer"
+      : "Inactivity timer";
+
+  const timerValue =
+    showPresencePopup
+      ? presenceCountdown
+      : phaseTimer;
+
+  const timerColor =
+    showPresencePopup || timerValue <= 10
+      ? "#ef4444"
+      : "#2563eb";
+
+  const handleContinueInterview =
+    () => {
+      setShowPresencePopup(false);
+      setPhase("inactivity");
+      setPhaseTimer(30);
+      setPresenceCountdown(10);
+      setSkipMessage("");
+    };
+
   return (
     <div className="interview-page">
 
@@ -333,14 +408,12 @@ function Interview() {
           fontWeight:
             "600",
           color:
-            questionTimer <= 10
-              ? "#ef4444"
-              : "#2563eb",
+            timerColor,
         }}
       >
-        Next question in:
+        {timerLabel}:
         {" "}
-        {questionTimer}s
+        {timerValue}s
       </div>
 
       <div className="progress-container">
@@ -365,6 +438,63 @@ function Interview() {
 
       </div>
 
+      {showPresencePopup && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background:
+              "rgba(0,0,0,0.45)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 50,
+          }}
+        >
+          <div
+            style={{
+              width: "100%",
+              maxWidth: "420px",
+              padding: "24px",
+              borderRadius: "12px",
+              background: "#ffffff",
+              boxShadow:
+                "0 20px 60px rgba(0,0,0,0.16)",
+              textAlign: "center",
+            }}
+          >
+            <h2>Are you still there?</h2>
+            <p
+              style={{
+                margin: "12px 0",
+                color: "#374151",
+              }}
+            >
+              Continue within {presenceCountdown}s or the
+              question will be skipped automatically.
+            </p>
+            <button
+              className="primary-btn"
+              onClick={handleContinueInterview}
+              style={{
+                marginRight: "12px",
+              }}
+            >
+              Continue Interview
+            </button>
+            <button
+              className="secondary-btn"
+              onClick={handleAutoSkip}
+            >
+              Skip Now
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="answer-card">
 
         <h3>
@@ -375,13 +505,11 @@ function Interview() {
           rows="8"
           value={answer}
           onChange={(e) => {
-
             setAnswer(
               e.target.value
             );
 
             resetQuestionTimer();
-
           }}
           placeholder="Type your answer here..."
         />

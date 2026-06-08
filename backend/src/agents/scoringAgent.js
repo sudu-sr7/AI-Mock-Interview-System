@@ -86,9 +86,23 @@ export async function scoreInterview(
   ) {
     return {
       overallScore: 5,
+
       technical: 5,
       communication: 5,
       confidence: 5,
+
+      criticalThinking: 5,
+      leadership: 5,
+      emotionalIntelligence: 5,
+      cultureFit: 5,
+
+      interviewPerformanceScore: 5,
+      jobFitScore: 5,
+      careerGrowthPotentialScore: 5,
+      employabilityScore: 5,
+
+      recommendation:
+        "Needs Significant Improvement",
 
       strengths: [],
 
@@ -115,7 +129,7 @@ export async function scoreInterview(
           "No meaningful technical responses were provided during the interview."
         ],
         communication: [
-          "Most responses were either empty or too short to evaluate communication skills."
+          "Most responses were too short or incomplete to evaluate communication ability."
         ],
         confidence: [
           "There was insufficient information to assess confidence accurately."
@@ -135,74 +149,60 @@ export async function scoreInterview(
       .join("\n\n");
 
   const prompt = `
-You are a senior software engineering hiring manager.
+You are a senior engineering hiring manager.
 
 Evaluate ONLY the candidate answers.
 
-IMPORTANT RULES:
+IMPORTANT RULES
 
-1. Scores MUST be between 0 and 100.
+1. Every score MUST be between 0 and 100.
 2. Return ONLY valid JSON.
-3. Do NOT use markdown.
-4. Ignore interviewer questions while scoring.
-5. If a question was skipped, apply only a small penalty.
+3. No markdown.
+4. Ignore interviewer questions.
+5. Skipped questions should receive only a small penalty.
 6. Deduction analysis must be specific and understandable.
-7. Do not write generic feedback like:
-   "weak technical skills"
-   "poor communication"
-
-Instead explain exactly why marks were reduced.
-
-Examples:
-
-GOOD:
-"You explained the project outcome but did not explain why LSTM was chosen over traditional machine learning algorithms."
-
-GOOD:
-"Several answers lacked examples which made it difficult to evaluate your practical experience."
-
-BAD:
-"Weak technical skills"
+7. Explain WHY marks were reduced.
 
 Return JSON in EXACT format:
 
 {
-  "overallScore": 85,
-  "technical": 82,
-  "communication": 88,
-  "confidence": 84,
+  "overallScore": 82,
 
-  "strengths": [
-    "strength"
-  ],
+  "technical": 78,
+  "communication": 85,
+  "confidence": 79,
 
-  "improvements": [
-    "improvement"
-  ],
+  "criticalThinking": 80,
+  "leadership": 84,
+  "emotionalIntelligence": 88,
+  "cultureFit": 83,
 
-  "weakAreas": [
-    "Machine Learning"
-  ],
+  "interviewPerformanceScore": 82,
+  "jobFitScore": 84,
+  "careerGrowthPotentialScore": 89,
+  "employabilityScore": 81,
 
-  "recommendations": [
-    "recommendation"
-  ],
+  "recommendation": "Strong Candidate",
+
+  "strengths": [],
+  "improvements": [],
+  "weakAreas": [],
+  "recommendations": [],
 
   "deductionAnalysis": {
-    "technical": [
-      "reason 1",
-      "reason 2"
-    ],
-    "communication": [
-      "reason 1",
-      "reason 2"
-    ],
-    "confidence": [
-      "reason 1",
-      "reason 2"
-    ]
+    "technical": [],
+    "communication": [],
+    "confidence": []
   }
 }
+
+Recommendation must be one of:
+
+"Outstanding Candidate"
+"Strong Candidate"
+"Recommended"
+"Borderline"
+"Needs Improvement"
 
 Interview Conversation:
 
@@ -232,18 +232,6 @@ ${conversation}
     const result =
       JSON.parse(cleaned);
 
-    if (
-      result.overallScore <= 10 &&
-      result.technical <= 10 &&
-      result.communication <= 10 &&
-      result.confidence <= 10
-    ) {
-      result.overallScore *= 10;
-      result.technical *= 10;
-      result.communication *= 10;
-      result.confidence *= 10;
-    }
-
     return {
       overallScore:
         result.overallScore ?? 50,
@@ -256,6 +244,34 @@ ${conversation}
 
       confidence:
         result.confidence ?? 50,
+
+      criticalThinking:
+        result.criticalThinking ?? 50,
+
+      leadership:
+        result.leadership ?? 50,
+
+      emotionalIntelligence:
+        result.emotionalIntelligence ?? 50,
+
+      cultureFit:
+        result.cultureFit ?? 50,
+
+      interviewPerformanceScore:
+        result.interviewPerformanceScore ?? 50,
+
+      jobFitScore:
+        result.jobFitScore ?? 50,
+
+      careerGrowthPotentialScore:
+        result.careerGrowthPotentialScore ?? 50,
+
+      employabilityScore:
+        result.employabilityScore ?? 50,
+
+      recommendation:
+        result.recommendation ??
+        "Recommended",
 
       strengths:
         result.strengths ?? [],
@@ -288,9 +304,23 @@ ${conversation}
 
     return {
       overallScore: 50,
+
       technical: 50,
       communication: 50,
       confidence: 50,
+
+      criticalThinking: 50,
+      leadership: 50,
+      emotionalIntelligence: 50,
+      cultureFit: 50,
+
+      interviewPerformanceScore: 50,
+      jobFitScore: 50,
+      careerGrowthPotentialScore: 50,
+      employabilityScore: 50,
+
+      recommendation:
+        "Recommended",
 
       strengths: [
         "Interview completed",

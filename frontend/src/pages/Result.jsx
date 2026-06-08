@@ -25,6 +25,22 @@ function Result() {
         Interview Report
       </h1>
 
+      <div
+        className="recommendation-badge"
+      >
+        {result.recommendation}
+      </div>
+
+      <h2
+        style={{
+          marginTop: "30px",
+          marginBottom: "20px",
+          textAlign: "center",
+        }}
+      >
+        Core Interview Scores
+      </h2>
+
       <div className="score-grid">
 
         <div className="score-box">
@@ -50,12 +66,110 @@ function Result() {
 
       </div>
 
+      <h2
+        style={{
+          marginTop: "20px",
+          marginBottom: "20px",
+          textAlign: "center",
+        }}
+      >
+        Hiring Assessment
+      </h2>
+
+      <div className="score-grid">
+
+        <div className="score-box">
+          <h3>
+            Interview Performance
+          </h3>
+          <h2>
+            {result.interviewPerformanceScore}%
+          </h2>
+        </div>
+
+        <div className="score-box">
+          <h3>
+            Job Fit
+          </h3>
+          <h2>
+            {result.jobFitScore}%
+          </h2>
+        </div>
+
+        <div className="score-box">
+          <h3>
+            Growth Potential
+          </h3>
+          <h2>
+            {result.careerGrowthPotentialScore}%
+          </h2>
+        </div>
+
+        <div className="score-box">
+          <h3>
+            Employability
+          </h3>
+          <h2>
+            {result.employabilityScore}%
+          </h2>
+        </div>
+
+      </div>
+
+      <h2
+        style={{
+          marginTop: "20px",
+          marginBottom: "20px",
+          textAlign: "center",
+        }}
+      >
+        Professional Competencies
+      </h2>
+
+      <div className="score-grid">
+
+        <div className="score-box">
+          <h3>
+            Critical Thinking
+          </h3>
+          <h2>
+            {result.criticalThinking}%
+          </h2>
+        </div>
+
+        <div className="score-box">
+          <h3>
+            Leadership
+          </h3>
+          <h2>
+            {result.leadership}%
+          </h2>
+        </div>
+
+        <div className="score-box">
+          <h3>
+            Emotional Intelligence
+          </h3>
+          <h2>
+            {result.emotionalIntelligence}%
+          </h2>
+        </div>
+
+        <div className="score-box">
+          <h3>
+            Culture Fit
+          </h3>
+          <h2>
+            {result.cultureFit}%
+          </h2>
+        </div>
+
+      </div>
+
       <div
         style={{
-          textAlign:
-            "center",
-          marginBottom:
-            "35px",
+          textAlign: "center",
+          marginBottom: "35px",
         }}
       >
         <button
@@ -79,7 +193,7 @@ function Result() {
           <div className="deduction-card">
 
             <h2>
-              Technical Score Analysis
+              Technical Analysis
             </h2>
 
             <ul>
@@ -105,7 +219,7 @@ function Result() {
           <div className="deduction-card">
 
             <h2>
-              Communication Score Analysis
+              Communication Analysis
             </h2>
 
             <ul>
@@ -131,7 +245,7 @@ function Result() {
           <div className="deduction-card">
 
             <h2>
-              Confidence Score Analysis
+              Confidence Analysis
             </h2>
 
             <ul>
