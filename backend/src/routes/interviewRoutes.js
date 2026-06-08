@@ -17,6 +17,99 @@ const MIN_QUESTIONS = 10;
 const MAX_QUESTIONS = 15;
 const INTERVIEW_DURATION = 30;
 
+function normalizeText(text) {
+  return text.trim().replace(/\s+/g, " ");
+}
+
+function countWords(content) {
+  return content
+    .split(/\s+/)
+    .filter(Boolean).length;
+}
+
+function mostFrequentTokenRatio(tokens) {
+  const counts = {};
+  tokens.forEach((token) => {
+    counts[token] = (counts[token] || 0) + 1;
+  });
+  return Math.max(...Object.values(counts)) / tokens.length;
+}
+
+function isRepeatedCharAnswer(content) {
+  const lettersOnly = content.replace(/[^a-zA-Z]/g, "");
+  if (lettersOnly.length < 5) {
+    return false;
+  }
+
+  const counts = {};
+  for (const char of lettersOnly.toLowerCase()) {
+    counts[char] = (counts[char] || 0) + 1;
+  }
+
+  return Math.max(...Object.values(counts)) / lettersOnly.length >= 0.75;
+}
+
+function isRepeatedTokenAnswer(content) {
+  const tokens = content
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (tokens.length < 5) {
+    return false;
+  }
+
+  return mostFrequentTokenRatio(tokens) >= 0.75;
+}
+
+function isNonsenseAnswer(content) {
+  const trimmed = normalizeText(content);
+  if (!trimmed) {
+    return true;
+  }
+
+  const wordCount = countWords(trimmed);
+  if (wordCount === 0) {
+    return true;
+  }
+
+  if (isRepeatedCharAnswer(trimmed) || isRepeatedTokenAnswer(trimmed)) {
+    return true;
+  }
+
+  if (wordCount >= 20) {
+    const uniqueCount = new Set(trimmed.toLowerCase().split(/\s+/).filter(Boolean)).size;
+    if (uniqueCount / wordCount <= 0.25) {
+      return true;
+    }
+  }
+
+  const fillerText = trimmed.toLowerCase().replace(/\s+/g, "");
+  if (/^(k+|a+|q+|asdf+|qwerty+)$/.test(fillerText)) {
+    return true;
+  }
+
+  const vagueShortResponses = [
+    "i think",
+    "i guess",
+    "maybe",
+    "idk",
+    "not sure",
+    "i dont know",
+    "whatever",
+  ];
+
+  if (
+    vagueShortResponses.some((phrase) =>
+      trimmed.toLowerCase() === phrase || trimmed.toLowerCase().startsWith(`${phrase} `)
+    ) && wordCount < 10
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 router.post(
   "/start",
   async (req, res) => {
@@ -118,6 +211,15 @@ router.post(
                 "Please provide a more detailed answer.",
             });
 
+        }
+
+        if (isNonsenseAnswer(finalAnswer)) {
+          return res
+            .status(400)
+            .json({
+              message:
+                "Answer appears to be invalid or filler. Please provide a meaningful response in full sentences.",
+            });
         }
 
       } else {

@@ -1,38 +1,148 @@
 import openai from "../services/openaiService.js";
 
+const MIN_MEANINGFUL_WORDS = 15;
+const REPEATED_TOKEN_RATIO_THRESHOLD = 0.75;
+const REPEATED_CHAR_RATIO_THRESHOLD = 0.75;
+const LOW_VARIETY_RATIO = 0.25;
+
+function normalizeText(text) {
+  return text.trim().replace(/\s+/g, " ");
+}
+
+function countWords(content) {
+  return content
+    .split(/\s+/)
+    .filter(Boolean).length;
+}
+
+function mostFrequentTokenRatio(tokens) {
+  const counts = {};
+  tokens.forEach((token) => {
+    counts[token] = (counts[token] || 0) + 1;
+  });
+  return Math.max(...Object.values(counts)) / tokens.length;
+}
+
+function isRepeatedCharAnswer(content) {
+  const lettersOnly = content.replace(/[^a-zA-Z]/g, "");
+  if (lettersOnly.length < 5) {
+    return false;
+  }
+
+  const counts = {};
+  for (const char of lettersOnly.toLowerCase()) {
+    counts[char] = (counts[char] || 0) + 1;
+  }
+
+  return Math.max(...Object.values(counts)) / lettersOnly.length >= REPEATED_CHAR_RATIO_THRESHOLD;
+}
+
+function isRepeatedTokenAnswer(content) {
+  const tokens = content
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (tokens.length < 5) {
+    return false;
+  }
+
+  return mostFrequentTokenRatio(tokens) >= REPEATED_TOKEN_RATIO_THRESHOLD;
+}
+
+function hasLowWordVariety(content) {
+  const tokens = content
+    .toLowerCase()
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (tokens.length === 0) {
+    return true;
+  }
+
+  return new Set(tokens).size / tokens.length <= LOW_VARIETY_RATIO;
+}
+
+function isNonsenseAnswer(content) {
+  const trimmed = normalizeText(content);
+  if (!trimmed) {
+    return true;
+  }
+
+  if (trimmed === "[Skipped due to inactivity]") {
+    return false;
+  }
+
+  const wordCount = countWords(trimmed);
+  if (wordCount === 0) {
+    return true;
+  }
+
+  if (isRepeatedCharAnswer(trimmed) || isRepeatedTokenAnswer(trimmed)) {
+    return true;
+  }
+
+  if (wordCount >= 20 && hasLowWordVariety(trimmed)) {
+    return true;
+  }
+
+  const lower = trimmed.toLowerCase();
+  const fillerText = lower.replace(/\s+/g, "");
+  if (/^(k+|a+|q+|asdf+|qwerty+)$/.test(fillerText)) {
+    return true;
+  }
+
+  const vagueShortResponses = [
+    "i think",
+    "i guess",
+    "maybe",
+    "idk",
+    "not sure",
+    "i dont know",
+    "whatever",
+  ];
+
+  if (
+    vagueShortResponses.some(
+      (phrase) => lower === phrase || lower.startsWith(`${phrase} `)
+    ) && wordCount < 10
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 function analyzeAnswers(messages) {
-  const answers = messages.filter(
-    (m) => m.role === "user"
-  );
+  const answers = messages.filter((m) => m.role === "user");
 
   let totalWords = 0;
   let meaningfulAnswers = 0;
   let emptyAnswers = 0;
   let skippedAnswers = 0;
+  let invalidAnswers = 0;
 
   answers.forEach((answer) => {
-    const content =
-      answer.content.trim();
+    const content = normalizeText(answer.content);
 
-    if (
-      content ===
-      "[Skipped due to inactivity]"
-    ) {
+    if (content === "[Skipped due to inactivity]") {
       skippedAnswers++;
       return;
     }
 
-    const wordCount = content
-      .split(/\s+/)
-      .filter(Boolean).length;
+    if (isNonsenseAnswer(content)) {
+      invalidAnswers++;
+      return;
+    }
 
+    const wordCount = countWords(content);
     totalWords += wordCount;
 
     if (wordCount === 0) {
       emptyAnswers++;
     }
 
-    if (wordCount >= 15) {
+    if (wordCount >= MIN_MEANINGFUL_WORDS) {
       meaningfulAnswers++;
     }
   });
@@ -43,6 +153,7 @@ function analyzeAnswers(messages) {
     meaningfulAnswers,
     emptyAnswers,
     skippedAnswers,
+    invalidAnswers,
   };
 }
 
@@ -79,10 +190,7 @@ export async function scoreInterview(
 
   if (
     stats.totalAnswers === 0 ||
-    (
-      stats.meaningfulAnswers === 0 &&
-      stats.skippedAnswers === 0
-    )
+    stats.meaningfulAnswers === 0
   ) {
     return {
       overallScore: 5,

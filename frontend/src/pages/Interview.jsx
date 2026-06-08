@@ -479,17 +479,8 @@ function Interview() {
             <button
               className="primary-btn"
               onClick={handleContinueInterview}
-              style={{
-                marginRight: "12px",
-              }}
             >
               Continue Interview
-            </button>
-            <button
-              className="secondary-btn"
-              onClick={handleAutoSkip}
-            >
-              Skip Now
             </button>
           </div>
         </div>
