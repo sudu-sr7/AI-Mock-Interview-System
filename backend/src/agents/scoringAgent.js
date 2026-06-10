@@ -50,6 +50,21 @@ function isRepeatedTokenAnswer(content) {
   return mostFrequentTokenRatio(tokens) >= REPEATED_TOKEN_RATIO_THRESHOLD;
 }
 
+const HEDGING_PHRASES = [
+  "i think",
+  "i guess",
+  "maybe",
+  "not sure",
+  "could",
+  "would",
+  "probably",
+  "sort of",
+  "kind of",
+  "seems",
+  "maybe",
+  "perhaps",
+];
+
 function hasLowWordVariety(content) {
   const tokens = content
     .toLowerCase()
@@ -61,6 +76,11 @@ function hasLowWordVariety(content) {
   }
 
   return new Set(tokens).size / tokens.length <= LOW_VARIETY_RATIO;
+}
+
+function containsHedging(content) {
+  const lower = content.toLowerCase();
+  return HEDGING_PHRASES.some((phrase) => lower.includes(phrase));
 }
 
 function isNonsenseAnswer(content) {
@@ -121,6 +141,8 @@ function analyzeAnswers(messages) {
   let emptyAnswers = 0;
   let skippedAnswers = 0;
   let invalidAnswers = 0;
+  let hedgedAnswers = 0;
+  let shortAnswers = 0;
 
   answers.forEach((answer) => {
     const content = normalizeText(answer.content);
@@ -142,6 +164,14 @@ function analyzeAnswers(messages) {
       emptyAnswers++;
     }
 
+    if (wordCount < MIN_MEANINGFUL_WORDS) {
+      shortAnswers++;
+    }
+
+    if (containsHedging(content)) {
+      hedgedAnswers++;
+    }
+
     if (wordCount >= MIN_MEANINGFUL_WORDS) {
       meaningfulAnswers++;
     }
@@ -154,7 +184,96 @@ function analyzeAnswers(messages) {
     emptyAnswers,
     skippedAnswers,
     invalidAnswers,
+    hedgedAnswers,
+    shortAnswers,
   };
+}
+
+function buildDeductionAnalysis(stats) {
+  const technical = [];
+  const communication = [];
+  const confidence = [];
+
+  if (stats.totalAnswers === 0) {
+    technical.push("No candidate answers were available to evaluate technical competence.");
+    communication.push("No candidate answers were available to evaluate communication skills.");
+    confidence.push("No candidate answers were available to evaluate confidence.");
+    return { technical, communication, confidence };
+  }
+
+  if (stats.invalidAnswers > 0) {
+    technical.push(
+      `${stats.invalidAnswers} answer(s) were nonsensical or contained low-content filler, making it difficult to assess technical ability.`
+    );
+    communication.push(
+      `${stats.invalidAnswers} response(s) were unclear or off-topic, reducing confidence in communication.`
+    );
+  }
+
+  if (stats.skippedAnswers > 0) {
+    communication.push(
+      `${stats.skippedAnswers} skipped question(s) interrupted the flow and limited opportunities to demonstrate clear communication.`
+    );
+    confidence.push(
+      `${stats.skippedAnswers} skipped response(s) indicated the candidate may have been unsure or disengaged.`
+    );
+  }
+
+  if (stats.shortAnswers > 0) {
+    technical.push(
+      `${stats.shortAnswers} answer(s) were shorter than expected, which reduced the amount of technical detail provided.`
+    );
+    communication.push(
+      `${stats.shortAnswers} answer(s) were too brief to fully convey thought process or clarity.`
+    );
+  }
+
+  if (stats.hedgedAnswers > 0) {
+    communication.push(
+      `${stats.hedgedAnswers} response(s) used uncertain language like "maybe" or "I think", which weakened clarity.`
+    );
+    confidence.push(
+      `${stats.hedgedAnswers} response(s) included hedging language, reducing perceived confidence.`
+    );
+  }
+
+  if (stats.totalWords < 75) {
+    technical.push(
+      "Overall answer length was low, which limited the opportunity to demonstrate detailed technical reasoning and examples."
+    );
+  }
+
+  if (stats.meaningfulAnswers === 0) {
+    technical.push(
+      "There were no meaningful, detailed responses to evaluate technical depth."
+    );
+    communication.push(
+      "There were no meaningful, detailed responses to evaluate communication."
+    );
+    confidence.push(
+      "There were no meaningful, detailed responses to evaluate confidence."
+    );
+  }
+
+  if (technical.length === 0) {
+    technical.push(
+      "The candidate provided a reasonable amount of detail, but further technical depth would strengthen the evaluation."
+    );
+  }
+
+  if (communication.length === 0) {
+    communication.push(
+      "The candidate communicated sufficiently, though more structure and specificity in responses would improve the evaluation."
+    );
+  }
+
+  if (confidence.length === 0) {
+    confidence.push(
+      "The responses were generally steady, with no strong negative signals affecting confidence evaluation." 
+    );
+  }
+
+  return { technical, communication, confidence };
 }
 
 function buildTranscript(messages) {
@@ -268,8 +387,8 @@ IMPORTANT RULES
 3. No markdown.
 4. Ignore interviewer questions.
 5. Skipped questions should receive only a small penalty.
-6. Deduction analysis must be specific and understandable.
-7. Explain WHY marks were reduced.
+6. Deduction analysis must be specific, grounded in the candidate's answers, and understandable.
+7. Explain WHY marks were reduced using evidence from the transcript.
 
 Return JSON in EXACT format:
 
@@ -394,11 +513,7 @@ ${conversation}
         result.recommendations ?? [],
 
       deductionAnalysis:
-        result.deductionAnalysis ?? {
-          technical: [],
-          communication: [],
-          confidence: [],
-        },
+        buildDeductionAnalysis(stats),
 
       transcript,
     };
