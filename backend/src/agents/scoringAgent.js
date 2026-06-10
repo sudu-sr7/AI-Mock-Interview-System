@@ -50,21 +50,6 @@ function isRepeatedTokenAnswer(content) {
   return mostFrequentTokenRatio(tokens) >= REPEATED_TOKEN_RATIO_THRESHOLD;
 }
 
-const HEDGING_PHRASES = [
-  "i think",
-  "i guess",
-  "maybe",
-  "not sure",
-  "could",
-  "would",
-  "probably",
-  "sort of",
-  "kind of",
-  "seems",
-  "maybe",
-  "perhaps",
-];
-
 function hasLowWordVariety(content) {
   const tokens = content
     .toLowerCase()
@@ -77,6 +62,20 @@ function hasLowWordVariety(content) {
 
   return new Set(tokens).size / tokens.length <= LOW_VARIETY_RATIO;
 }
+
+const HEDGING_PHRASES = [
+  "i think",
+  "i guess",
+  "maybe",
+  "not sure",
+  "could",
+  "would",
+  "probably",
+  "sort of",
+  "kind of",
+  "seems",
+  "perhaps",
+];
 
 function containsHedging(content) {
   const lower = content.toLowerCase();
@@ -134,6 +133,7 @@ function isNonsenseAnswer(content) {
 }
 
 function analyzeAnswers(transcript) {
+  const answerMap = {};
   const stats = {
     totalAnswers: transcript.length,
     totalWords: 0,
@@ -145,11 +145,16 @@ function analyzeAnswers(transcript) {
     shortAnswers: [],
     lowVarietyAnswers: [],
     repeatedAnswers: [],
+    duplicateAnswerGroups: [],
   };
 
   transcript.forEach((pair, index) => {
     const content = normalizeText(pair.answer);
     const questionNumber = index + 1;
+    const answerKey = content.toLowerCase();
+
+    answerMap[answerKey] = answerMap[answerKey] || [];
+    answerMap[answerKey].push(questionNumber);
 
     if (content === "[Skipped due to inactivity]") {
       stats.skippedAnswers.push(questionNumber);
@@ -186,6 +191,15 @@ function analyzeAnswers(transcript) {
 
     if (wordCount >= MIN_MEANINGFUL_WORDS) {
       stats.meaningfulAnswers++;
+    }
+  });
+
+  Object.entries(answerMap).forEach(([answerText, questionNumbers]) => {
+    if (answerText && questionNumbers.length > 1) {
+      stats.duplicateAnswerGroups.push({
+        answerPreview: answerText.slice(0, 120),
+        questionNumbers,
+      });
     }
   });
 
@@ -254,7 +268,22 @@ function buildDeductionAnalysis(stats) {
   if (stats.repeatedAnswers.length > 0) {
     const repeatedQuestions = stats.repeatedAnswers.map((item) => item.questionNumber).join(", ");
     technical.push(
-      `Question(s) ${repeatedQuestions} contained repetitive structure or wording that made the response feel less substantive.`
+      `Question(s) ${repeatedQuestions} contained repetitive wording or structure, making the responses less substantive.`
+    );
+  }
+
+  if (stats.duplicateAnswerGroups.length > 0) {
+    const duplicateSummaries = stats.duplicateAnswerGroups
+      .map((group) => group.questionNumbers.join(", "))
+      .join("; ");
+    technical.push(
+      `The same answer was reused for question(s) ${duplicateSummaries}, so the candidate did not provide question-specific technical detail.`
+    );
+    communication.push(
+      `The candidate repeated the same answer across question(s) ${duplicateSummaries}, reducing the sense of tailored communication.`
+    );
+    confidence.push(
+      `Reusing identical responses for question(s) ${duplicateSummaries} made it harder to assess confidence because answers lacked specificity.`
     );
   }
 
@@ -290,7 +319,7 @@ function buildDeductionAnalysis(stats) {
 
   if (confidence.length === 0) {
     confidence.push(
-      "The responses did not show any major confidence concerns based on the available answers." 
+      "The responses did not show any major confidence concerns based on the available answers."
     );
   }
 
@@ -372,17 +401,7 @@ export async function scoreInterview(
         "Review core technical concepts",
       ],
 
-      deductionAnalysis: {
-        technical: [
-          "No meaningful technical responses were provided during the interview."
-        ],
-        communication: [
-          "Most responses were too short or incomplete to evaluate communication ability."
-        ],
-        confidence: [
-          "There was insufficient information to assess confidence accurately."
-        ],
-      },
+      deductionAnalysis: buildDeductionAnalysis(stats),
 
       transcript,
     };
@@ -408,8 +427,8 @@ IMPORTANT RULES
 3. No markdown.
 4. Ignore interviewer questions.
 5. Skipped questions should receive only a small penalty.
-6. Deduction analysis must be specific, grounded in the candidate's answers, and understandable.
-7. Explain WHY marks were reduced using evidence from the transcript.
+6. Deduction analysis must be specific and understandable.
+7. Explain WHY marks were reduced.
 
 Return JSON in EXACT format:
 
@@ -534,7 +553,11 @@ ${conversation}
         result.recommendations ?? [],
 
       deductionAnalysis:
-        buildDeductionAnalysis(stats),
+        result.deductionAnalysis ?? {
+          technical: [],
+          communication: [],
+          confidence: [],
+        },
 
       transcript,
     };
