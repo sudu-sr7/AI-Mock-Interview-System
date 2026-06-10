@@ -133,60 +133,63 @@ function isNonsenseAnswer(content) {
   return false;
 }
 
-function analyzeAnswers(messages) {
-  const answers = messages.filter((m) => m.role === "user");
+function analyzeAnswers(transcript) {
+  const stats = {
+    totalAnswers: transcript.length,
+    totalWords: 0,
+    meaningfulAnswers: 0,
+    emptyAnswers: 0,
+    skippedAnswers: [],
+    invalidAnswers: [],
+    hedgedAnswers: [],
+    shortAnswers: [],
+    lowVarietyAnswers: [],
+    repeatedAnswers: [],
+  };
 
-  let totalWords = 0;
-  let meaningfulAnswers = 0;
-  let emptyAnswers = 0;
-  let skippedAnswers = 0;
-  let invalidAnswers = 0;
-  let hedgedAnswers = 0;
-  let shortAnswers = 0;
-
-  answers.forEach((answer) => {
-    const content = normalizeText(answer.content);
+  transcript.forEach((pair, index) => {
+    const content = normalizeText(pair.answer);
+    const questionNumber = index + 1;
 
     if (content === "[Skipped due to inactivity]") {
-      skippedAnswers++;
+      stats.skippedAnswers.push(questionNumber);
       return;
     }
 
     if (isNonsenseAnswer(content)) {
-      invalidAnswers++;
+      stats.invalidAnswers.push({ questionNumber, question: pair.question });
       return;
     }
 
     const wordCount = countWords(content);
-    totalWords += wordCount;
+    stats.totalWords += wordCount;
 
     if (wordCount === 0) {
-      emptyAnswers++;
+      stats.emptyAnswers++;
     }
 
     if (wordCount < MIN_MEANINGFUL_WORDS) {
-      shortAnswers++;
+      stats.shortAnswers.push({ questionNumber, question: pair.question, wordCount });
     }
 
     if (containsHedging(content)) {
-      hedgedAnswers++;
+      stats.hedgedAnswers.push({ questionNumber, phrase: content });
+    }
+
+    if (hasLowWordVariety(content)) {
+      stats.lowVarietyAnswers.push({ questionNumber, question: pair.question });
+    }
+
+    if (isRepeatedTokenAnswer(content) || isRepeatedCharAnswer(content)) {
+      stats.repeatedAnswers.push({ questionNumber, question: pair.question });
     }
 
     if (wordCount >= MIN_MEANINGFUL_WORDS) {
-      meaningfulAnswers++;
+      stats.meaningfulAnswers++;
     }
   });
 
-  return {
-    totalAnswers: answers.length,
-    totalWords,
-    meaningfulAnswers,
-    emptyAnswers,
-    skippedAnswers,
-    invalidAnswers,
-    hedgedAnswers,
-    shortAnswers,
-  };
+  return stats;
 }
 
 function buildDeductionAnalysis(stats) {
@@ -201,45 +204,63 @@ function buildDeductionAnalysis(stats) {
     return { technical, communication, confidence };
   }
 
-  if (stats.invalidAnswers > 0) {
+  if (stats.invalidAnswers.length > 0) {
+    const invalidQuestions = stats.invalidAnswers.map((item) => item.questionNumber).join(", ");
     technical.push(
-      `${stats.invalidAnswers} answer(s) were nonsensical or contained low-content filler, making it difficult to assess technical ability.`
+      `Answer(s) to question(s) ${invalidQuestions} were unclear or contained filler, so technical ability could not be evaluated reliably.`
     );
     communication.push(
-      `${stats.invalidAnswers} response(s) were unclear or off-topic, reducing confidence in communication.`
+      `Answer(s) to question(s) ${invalidQuestions} lacked clarity, which reduced confidence in communication skills.`
     );
   }
 
-  if (stats.skippedAnswers > 0) {
+  if (stats.skippedAnswers.length > 0) {
+    const skippedQuestions = stats.skippedAnswers.join(", ");
     communication.push(
-      `${stats.skippedAnswers} skipped question(s) interrupted the flow and limited opportunities to demonstrate clear communication.`
+      `Question(s) ${skippedQuestions} were skipped, interrupting the candidate's ability to convey ideas clearly.`
     );
     confidence.push(
-      `${stats.skippedAnswers} skipped response(s) indicated the candidate may have been unsure or disengaged.`
+      `Skipping question(s) ${skippedQuestions} suggested hesitation or uncertainty in the candidate's responses.`
     );
   }
 
-  if (stats.shortAnswers > 0) {
+  if (stats.shortAnswers.length > 0) {
+    const shortQuestions = stats.shortAnswers.map((item) => item.questionNumber).join(", ");
     technical.push(
-      `${stats.shortAnswers} answer(s) were shorter than expected, which reduced the amount of technical detail provided.`
+      `Question(s) ${shortQuestions} received brief answers, which limited the technical detail presented.`
     );
     communication.push(
-      `${stats.shortAnswers} answer(s) were too brief to fully convey thought process or clarity.`
+      `Question(s) ${shortQuestions} were answered too briefly, reducing the chance to demonstrate structured thinking.`
     );
   }
 
-  if (stats.hedgedAnswers > 0) {
+  if (stats.hedgedAnswers.length > 0) {
+    const hedgedQuestions = stats.hedgedAnswers.map((item) => item.questionNumber).join(", ");
     communication.push(
-      `${stats.hedgedAnswers} response(s) used uncertain language like "maybe" or "I think", which weakened clarity.`
+      `Question(s) ${hedgedQuestions} included hedging language like "maybe" or "I think", weakening perceived clarity.`
     );
     confidence.push(
-      `${stats.hedgedAnswers} response(s) included hedging language, reducing perceived confidence.`
+      `Hedged language appeared in question(s) ${hedgedQuestions}, which reduced the impression of confidence.`
+    );
+  }
+
+  if (stats.lowVarietyAnswers.length > 0) {
+    const lowVarietyQuestions = stats.lowVarietyAnswers.map((item) => item.questionNumber).join(", ");
+    technical.push(
+      `Question(s) ${lowVarietyQuestions} used limited vocabulary, which made the answers seem less polished.`
+    );
+  }
+
+  if (stats.repeatedAnswers.length > 0) {
+    const repeatedQuestions = stats.repeatedAnswers.map((item) => item.questionNumber).join(", ");
+    technical.push(
+      `Question(s) ${repeatedQuestions} contained repetitive structure or wording that made the response feel less substantive.`
     );
   }
 
   if (stats.totalWords < 75) {
     technical.push(
-      "Overall answer length was low, which limited the opportunity to demonstrate detailed technical reasoning and examples."
+      "The overall response length was low, limiting the ability to show sufficient technical reasoning and examples."
     );
   }
 
@@ -257,19 +278,19 @@ function buildDeductionAnalysis(stats) {
 
   if (technical.length === 0) {
     technical.push(
-      "The candidate provided a reasonable amount of detail, but further technical depth would strengthen the evaluation."
+      "The candidate answered clearly enough, though more technical examples would strengthen the evaluation."
     );
   }
 
   if (communication.length === 0) {
     communication.push(
-      "The candidate communicated sufficiently, though more structure and specificity in responses would improve the evaluation."
+      "The candidate communicated adequately, with room for more concise structure in future answers."
     );
   }
 
   if (confidence.length === 0) {
     confidence.push(
-      "The responses were generally steady, with no strong negative signals affecting confidence evaluation." 
+      "The responses did not show any major confidence concerns based on the available answers." 
     );
   }
 
@@ -301,11 +322,11 @@ function buildTranscript(messages) {
 export async function scoreInterview(
   messages
 ) {
-  const stats =
-    analyzeAnswers(messages);
-
   const transcript =
     buildTranscript(messages);
+
+  const stats =
+    analyzeAnswers(transcript);
 
   if (
     stats.totalAnswers === 0 ||
