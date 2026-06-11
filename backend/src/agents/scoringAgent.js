@@ -207,21 +207,21 @@ function analyzeAnswers(transcript) {
 }
 
 function buildDeductionAnalysis(stats) {
-  const technical = [];
+  const domainKnowledge = [];
   const communication = [];
   const confidence = [];
 
   if (stats.totalAnswers === 0) {
-    technical.push("No candidate answers were available to evaluate technical competence.");
-    communication.push("No candidate answers were available to evaluate communication skills.");
-    confidence.push("No candidate answers were available to evaluate confidence.");
-    return { technical, communication, confidence };
+    domainKnowledge.push("No answers were available to evaluate domain knowledge.");
+    communication.push("No answers were available to evaluate communication skills.");
+    confidence.push("No answers were available to evaluate confidence.");
+    return { domainKnowledge, communication, confidence };
   }
 
   if (stats.invalidAnswers.length > 0) {
     const invalidQuestions = stats.invalidAnswers.map((item) => item.questionNumber).join(", ");
-    technical.push(
-      `Answer(s) to question(s) ${invalidQuestions} were unclear or contained filler, so technical ability could not be evaluated reliably.`
+    domainKnowledge.push(
+      `Answer(s) to question(s) ${invalidQuestions} were unclear or contained filler, so domain knowledge could not be evaluated reliably.`
     );
     communication.push(
       `Answer(s) to question(s) ${invalidQuestions} lacked clarity, which reduced confidence in communication skills.`
@@ -240,8 +240,8 @@ function buildDeductionAnalysis(stats) {
 
   if (stats.shortAnswers.length > 0) {
     const shortQuestions = stats.shortAnswers.map((item) => item.questionNumber).join(", ");
-    technical.push(
-      `Question(s) ${shortQuestions} received brief answers, which limited the technical detail presented.`
+    domainKnowledge.push(
+      `Question(s) ${shortQuestions} received brief answers, which limited the domain-specific detail presented.`
     );
     communication.push(
       `Question(s) ${shortQuestions} were answered too briefly, reducing the chance to demonstrate structured thinking.`
@@ -260,14 +260,14 @@ function buildDeductionAnalysis(stats) {
 
   if (stats.lowVarietyAnswers.length > 0) {
     const lowVarietyQuestions = stats.lowVarietyAnswers.map((item) => item.questionNumber).join(", ");
-    technical.push(
+    domainKnowledge.push(
       `Question(s) ${lowVarietyQuestions} used limited vocabulary, which made the answers seem less polished.`
     );
   }
 
   if (stats.repeatedAnswers.length > 0) {
     const repeatedQuestions = stats.repeatedAnswers.map((item) => item.questionNumber).join(", ");
-    technical.push(
+    domainKnowledge.push(
       `Question(s) ${repeatedQuestions} contained repetitive wording or structure, making the responses less substantive.`
     );
   }
@@ -276,8 +276,8 @@ function buildDeductionAnalysis(stats) {
     const duplicateSummaries = stats.duplicateAnswerGroups
       .map((group) => group.questionNumbers.join(", "))
       .join("; ");
-    technical.push(
-      `The same answer was reused for question(s) ${duplicateSummaries}, so the candidate did not provide question-specific technical detail.`
+    domainKnowledge.push(
+      `The same answer was reused for question(s) ${duplicateSummaries}, so the person being assessed did not provide question-specific domain detail.`
     );
     communication.push(
       `The candidate repeated the same answer across question(s) ${duplicateSummaries}, reducing the sense of tailored communication.`
@@ -288,14 +288,14 @@ function buildDeductionAnalysis(stats) {
   }
 
   if (stats.totalWords < 75) {
-    technical.push(
-      "The overall response length was low, limiting the ability to show sufficient technical reasoning and examples."
+    domainKnowledge.push(
+      "The overall response length was low, limiting the ability to show sufficient domain reasoning and examples."
     );
   }
 
   if (stats.meaningfulAnswers === 0) {
-    technical.push(
-      "There were no meaningful, detailed responses to evaluate technical depth."
+    domainKnowledge.push(
+      "There were no meaningful, detailed responses to evaluate domain depth."
     );
     communication.push(
       "There were no meaningful, detailed responses to evaluate communication."
@@ -305,9 +305,9 @@ function buildDeductionAnalysis(stats) {
     );
   }
 
-  if (technical.length === 0) {
-    technical.push(
-      "The candidate answered clearly enough, though more technical examples would strengthen the evaluation."
+  if (domainKnowledge.length === 0) {
+    domainKnowledge.push(
+      "The person being assessed answered clearly enough, though more domain examples would strengthen the evaluation."
     );
   }
 
@@ -323,7 +323,7 @@ function buildDeductionAnalysis(stats) {
     );
   }
 
-  return { technical, communication, confidence };
+  return { domainKnowledge, communication, confidence };
 }
 
 function buildTranscript(messages) {
@@ -364,7 +364,7 @@ export async function scoreInterview(
     return {
       overallScore: 5,
 
-      technical: 5,
+      domainKnowledge: 5,
       communication: 5,
       confidence: 5,
 
@@ -386,19 +386,19 @@ export async function scoreInterview(
       improvements: [
         "Provide complete answers",
         "Explain projects in detail",
-        "Demonstrate technical knowledge",
+        "Demonstrate domain knowledge",
         "Answer questions meaningfully",
       ],
 
       weakAreas: [
-        "Technical Knowledge",
+        "Domain Knowledge",
         "Communication",
         "Problem Solving",
       ],
 
       recommendations: [
         "Practice mock interviews",
-        "Review core technical concepts",
+        "Review core concepts",
       ],
 
       deductionAnalysis: buildDeductionAnalysis(stats),
@@ -435,7 +435,7 @@ Return JSON in EXACT format:
 {
   "overallScore": 82,
 
-  "technical": 78,
+  "domainKnowledge": 78,
   "communication": 85,
   "confidence": 79,
 
@@ -457,7 +457,7 @@ Return JSON in EXACT format:
   "recommendations": [],
 
   "deductionAnalysis": {
-    "technical": [],
+    "domainKnowledge": [],
     "communication": [],
     "confidence": []
   }
@@ -503,8 +503,8 @@ ${conversation}
       overallScore:
         result.overallScore ?? 50,
 
-      technical:
-        result.technical ?? 50,
+      domainKnowledge:
+        result.domainKnowledge ?? result.technical ?? 50,
 
       communication:
         result.communication ?? 50,
@@ -552,12 +552,22 @@ ${conversation}
       recommendations:
         result.recommendations ?? [],
 
-      deductionAnalysis:
-        result.deductionAnalysis ?? {
-          technical: [],
-          communication: [],
-          confidence: [],
-        },
+      deductionAnalysis: result.deductionAnalysis
+        ? {
+            domainKnowledge:
+              result.deductionAnalysis.domainKnowledge ??
+              result.deductionAnalysis.technical ??
+              [],
+            communication:
+              result.deductionAnalysis.communication ?? [],
+            confidence:
+              result.deductionAnalysis.confidence ?? [],
+          }
+        : {
+            domainKnowledge: [],
+            communication: [],
+            confidence: [],
+          },
 
       transcript,
     };
@@ -572,7 +582,7 @@ ${conversation}
     return {
       overallScore: 50,
 
-      technical: 50,
+      domainKnowledge: 50,
       communication: 50,
       confidence: 50,
 
@@ -602,7 +612,7 @@ ${conversation}
       recommendations: [],
 
       deductionAnalysis: {
-        technical: [],
+        domainKnowledge: [],
         communication: [],
         confidence: [],
       },

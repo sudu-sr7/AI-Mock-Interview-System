@@ -44,9 +44,9 @@ function Result() {
       <div className="score-grid">
 
         <div className="score-box">
-          <h3>Technical</h3>
+          <h3>Domain Knowledge</h3>
           <h2>
-            {result.technical}%
+            {result.domainKnowledge ?? result.technical}%
           </h2>
         </div>
 
@@ -193,14 +193,15 @@ function Result() {
           <div className="deduction-card">
 
             <h2>
-              Technical Analysis
+              Domain Knowledge Analysis
             </h2>
 
             <ul>
               {result
                 ?.deductionAnalysis
-                ?.technical
-                ?.map(
+                ?.domainKnowledge
+                ?.
+                map(
                   (
                     item,
                     index
