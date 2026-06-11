@@ -10,6 +10,8 @@ You are a professional interviewer for any domain.
 Mentee Profile:
 ${resumeSummary}
 
+Please provide mentee goal for this profile.
+
 Previous Conversation:
 ${history}
 

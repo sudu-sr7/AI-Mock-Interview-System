@@ -9,7 +9,7 @@ function Home() {
 
   const handleStart = async () => {
     if (!summary.trim()) {
-      alert("Please enter resume summary");
+      alert("Please enter the mentee goal and profile.");
       return;
     }
 
@@ -53,7 +53,7 @@ function Home() {
           onChange={(e) =>
             setSummary(e.target.value)
           }
-          placeholder="Paste your resume summary, skills, projects and experience..."
+          placeholder="Paste the mentee profile, experience, skills and goal..."
         />
 
         <button
