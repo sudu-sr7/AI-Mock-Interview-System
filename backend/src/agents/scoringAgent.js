@@ -416,9 +416,9 @@ export async function scoreInterview(
       .join("\n\n");
 
   const prompt = `
-You are a senior engineering hiring manager.
+You are an experienced mentor and interviewer evaluating responses across any domain.
 
-Evaluate ONLY the candidate answers.
+Evaluate ONLY the answers from the person being assessed.
 
 IMPORTANT RULES
 
