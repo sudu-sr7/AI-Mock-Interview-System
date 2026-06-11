@@ -47,6 +47,10 @@ function Home() {
           Platform
         </p>
 
+        <p style={{ marginTop: "20px", fontWeight: "600" }}>
+          Please provide the mentee goal for this profile along with experience and skills.
+        </p>
+
         <textarea
           rows="10"
           value={summary}
