@@ -4,17 +4,18 @@ import { startInterview } from "../api/interviewApi";
 
 function Home() {
   const [summary, setSummary] = useState("");
+  const [goal, setGoal] = useState("");
 
   const navigate = useNavigate();
 
   const handleStart = async () => {
-    if (!summary.trim()) {
-      alert("Please enter the mentee goal and profile.");
+    if (!summary.trim() || !goal.trim()) {
+      alert("Please enter both the mentee profile summary and goal.");
       return;
     }
 
     try {
-      const data = await startInterview(summary);
+      const data = await startInterview(summary, goal);
 
       localStorage.setItem(
         "sessionId",
@@ -53,7 +54,16 @@ function Home() {
           onChange={(e) =>
             setSummary(e.target.value)
           }
-          placeholder="Please provide the mentee goal for this profile along with experience and skills..."
+          placeholder="Please provide the mentee profile summary, experience, and skills..."
+        />
+
+        <textarea
+          rows="4"
+          value={goal}
+          onChange={(e) =>
+            setGoal(e.target.value)
+          }
+          placeholder="Please provide the mentee goal for this interview session..."
         />
 
         <button

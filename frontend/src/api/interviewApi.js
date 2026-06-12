@@ -4,7 +4,8 @@ const API =
   `${import.meta.env.VITE_API_URL}/api/interview`;
 
 export const startInterview = async (
-  resumeSummary
+  resumeSummary,
+  goal
 ) => {
 
   const response =
@@ -12,6 +13,7 @@ export const startInterview = async (
       `${API}/start`,
       {
         resumeSummary,
+        goal,
       }
     );
 

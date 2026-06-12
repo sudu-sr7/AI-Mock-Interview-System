@@ -2,7 +2,8 @@ import openai from "../services/openaiService.js";
 
 export async function generateQuestion(
   resumeSummary,
-  history
+  history,
+  goal
 ) {
   const prompt = `
 You are a professional interviewer for any domain.
@@ -10,7 +11,8 @@ You are a professional interviewer for any domain.
 Mentee Profile:
 ${resumeSummary}
 
-Please provide mentee goal for this profile.
+Mentee Goal:
+${goal}
 
 Previous Conversation:
 ${history}

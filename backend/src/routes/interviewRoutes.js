@@ -114,29 +114,37 @@ router.post(
   "/start",
   async (req, res) => {
     try {
-      const { resumeSummary } = req.body;
+        const { resumeSummary, goal } = req.body;
 
-      const sessionId = uuidv4();
+        if (!resumeSummary?.trim() || !goal?.trim()) {
+          return res.status(400).json({
+            error:
+              "Please provide both profile summary and goal.",
+          });
+        }
 
-      const firstQuestion =
-        await generateQuestion(
+        const sessionId = uuidv4();
+
+        const firstQuestion =
+          await generateQuestion(
+            resumeSummary,
+            [],
+            goal
+          );
+
+        await Interview.create({
+          sessionId,
           resumeSummary,
-          []
-        );
-
-      await Interview.create({
-        sessionId,
-        resumeSummary,
-        questionCount: 1,
-        startedAt: new Date(),
-
-        messages: [
-          {
-            role: "assistant",
-            content: firstQuestion,
-          },
-        ],
-      });
+          goal,
+          questionCount: 1,
+          startedAt: new Date(),
+          messages: [
+            {
+              role: "assistant",
+              content: firstQuestion,
+            },
+          ],
+        });
 
       res.json({
         sessionId,
@@ -283,7 +291,8 @@ Have a wonderful day.`;
       const nextQuestion =
         await generateQuestion(
           interview.resumeSummary,
-          interview.messages
+          interview.messages,
+          interview.goal
         );
 
       interview.messages.push({

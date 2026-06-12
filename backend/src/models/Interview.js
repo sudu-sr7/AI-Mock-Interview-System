@@ -14,6 +14,7 @@ const interviewSchema = new mongoose.Schema(
     },
 
     resumeSummary: String,
+    goal: String,
 
     messages: [messageSchema],
 
