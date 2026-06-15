@@ -371,35 +371,75 @@ function Result() {
           Interview Transcript
         </h2>
 
-        {result.transcript?.map(
-          (
-            item,
-            index
-          ) => (
-            <div
-              key={index}
-              className="transcript-card"
-            >
+        {(() => {
+          const answeredQuestions = [];
+          const skippedQuestions = [];
 
-              <h3>
-                Question {index + 1}
-              </h3>
+          result.transcript?.forEach(
+            (item, index) => {
+              const questionNumber = index + 1;
+              const itemWithNumber = {
+                ...item,
+                questionNumber,
+              };
 
-              <p>
-                {item.question}
-              </p>
+              if (
+                item.answer ===
+                "[Skipped due to inactivity]"
+              ) {
+                skippedQuestions.push(
+                  itemWithNumber
+                );
+              } else {
+                answeredQuestions.push(
+                  itemWithNumber
+                );
+              }
+            }
+          );
 
-              <h3>
-                Answer {index + 1}
-              </h3>
+          const allQuestions = [
+            ...answeredQuestions,
+            ...skippedQuestions,
+          ];
 
-              <p>
-                {item.answer}
-              </p>
+          return allQuestions.map(
+            (item) => (
+              <div
+                key={
+                  item.questionNumber
+                }
+                className="transcript-card"
+              >
 
-            </div>
-          )
-        )}
+                <h3>
+                  Question{" "}
+                  {
+                    item
+                      .questionNumber
+                  }
+                </h3>
+
+                <p>
+                  {item.question}
+                </p>
+
+                <h3>
+                  Answer{" "}
+                  {
+                    item
+                      .questionNumber
+                  }
+                </h3>
+
+                <p>
+                  {item.answer}
+                </p>
+
+              </div>
+            )
+          );
+        })()}
 
       </div>
 
