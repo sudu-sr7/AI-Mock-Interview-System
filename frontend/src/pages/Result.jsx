@@ -413,18 +413,6 @@ function Result() {
               >
 
                 <h3>
-                  Question{" "}
-                  {
-                    item
-                      .questionNumber
-                  }
-                </h3>
-
-                <p>
-                  {item.question}
-                </p>
-
-                <h3>
                   Answer{" "}
                   {
                     item
@@ -434,6 +422,18 @@ function Result() {
 
                 <p>
                   {item.answer}
+                </p>
+
+                <h3>
+                  Question{" "}
+                  {
+                    item
+                      .questionNumber
+                  }
+                </h3>
+
+                <p>
+                  {item.question}
                 </p>
 
               </div>
