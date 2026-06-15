@@ -217,8 +217,67 @@ function Interview() {
       return true;
     }
 
-    const repeatedWordPattern = /\b([a-z]{2,})\b(?:.*\b\1\b){3,}/i;
-    if (repeatedWordPattern.test(trimmed)) {
+    const suspiciousRepeatedWord = (
+      content
+    ) => {
+      const stopWords = new Set([
+        "the",
+        "and",
+        "a",
+        "an",
+        "of",
+        "to",
+        "in",
+        "for",
+        "on",
+        "with",
+        "is",
+        "it",
+        "that",
+        "this",
+        "as",
+        "are",
+        "be",
+        "by",
+        "from",
+        "or",
+        "at",
+        "was",
+        "which",
+        "but",
+        "not",
+        "have",
+        "has",
+      ]);
+
+      const tokens = content
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((token) =>
+          token.replace(/[^a-z0-9]/g, "")
+        )
+        .filter(Boolean);
+
+      const counts = {};
+      tokens.forEach((token) => {
+        if (
+          stopWords.has(token) ||
+          token.length < 4
+        ) {
+          return;
+        }
+
+        counts[token] =
+          (counts[token] || 0) + 1;
+      });
+
+      return Object.values(counts).some(
+        (count) => count >= 3
+      );
+    };
+
+    if (suspiciousRepeatedWord(trimmed)) {
       return true;
     }
 
