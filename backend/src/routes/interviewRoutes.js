@@ -244,19 +244,24 @@ router.post(
           finalAnswer,
       });
 
-      // Track skipped questions by message index
+      // Track skipped question numbers (1-15)
       if (skipped) {
-        const answerMessageIndex = interview.messages.length - 1;
         if (!interview.skippedQuestionIndices) {
           interview.skippedQuestionIndices = [];
         }
-        interview.skippedQuestionIndices.push(answerMessageIndex);
-      } else if (interview.skippedQuestionIndices && interview.skippedQuestionIndices.length > 0) {
-        // If this is answering a previously skipped question, remove from skipped list
-        const answerMessageIndex = interview.messages.length - 1;
-        interview.skippedQuestionIndices = interview.skippedQuestionIndices.filter(
-          (idx) => idx !== answerMessageIndex - 1
-        );
+        const questionNum = interview.questionCount + 1;
+        interview.skippedQuestionIndices.push(questionNum);
+      } else if (
+        interview.questionCount >= MAX_QUESTIONS &&
+        interview.skippedQuestionIndices &&
+        interview.skippedQuestionIndices.length > 0
+      ) {
+        // If answering a retry question, remove it from skipped list
+        const retriedQuestionNum = interview.skippedQuestionIndices[0];
+        interview.skippedQuestionIndices =
+          interview.skippedQuestionIndices.filter(
+            (qNum) => qNum !== retriedQuestionNum
+          );
       }
 
       const elapsedMinutes =
@@ -267,18 +272,14 @@ router.post(
         1000 /
         60;
 
-      const hasUnansweredSkipped =
-        interview.skippedQuestionIndices &&
-        interview.skippedQuestionIndices.length > 0;
+      const unansweredSkipped = interview.skippedQuestionIndices
+        ? interview.skippedQuestionIndices
+        : [];
 
       const shouldFinish =
         interview.questionCount >=
           MAX_QUESTIONS &&
-        !hasUnansweredSkipped &&
-        (elapsedMinutes >=
-          INTERVIEW_DURATION ||
-        interview.questionCount >=
-          MAX_QUESTIONS);
+        unansweredSkipped.length === 0;
 
       if (shouldFinish) {
 
@@ -311,23 +312,30 @@ Have a wonderful day.`;
 
       }
 
-      // If we've answered 15 questions but have skipped ones, return a skipped question
+      // If we've answered 15 questions but have unanswered skipped ones
       if (
         interview.questionCount >= MAX_QUESTIONS &&
-        hasUnansweredSkipped
+        unansweredSkipped.length > 0
       ) {
-        const skippedIndex = interview.skippedQuestionIndices[0];
-        const skippedQuestionMessage = interview.messages[skippedIndex - 1];
+        // Find the first unanswered skipped question
+        const skippedQuestionNum = unansweredSkipped[0];
+        
+        // Find the question message for this question number
+        let questionIndex = (skippedQuestionNum - 1) * 2;
+        const skippedQuestionMessage = interview.messages[questionIndex];
+
+        await interview.save();
 
         return res.json({
           completed: false,
-          question: skippedQuestionMessage.content,
-          questionNumber: skippedIndex / 2, // Rough estimate of question number
+          question: skippedQuestionMessage?.content || "Please answer this question",
+          questionNumber: skippedQuestionNum,
           isRetryQuestion: true,
-          remainingSkipped: interview.skippedQuestionIndices.length,
+          remainingSkipped: unansweredSkipped.length,
         });
       }
 
+      // Generate next question
       const nextQuestion =
         await generateQuestion(
           interview.resumeSummary,
