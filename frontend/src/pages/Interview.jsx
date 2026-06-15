@@ -114,6 +114,40 @@ function Interview() {
     return new Set(tokens).size / tokens.length <= 0.25;
   };
 
+  const hasLowVowelDensity = (content) => {
+    const tokens = content
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((token) => token.replace(/[^a-z]/g, ""));
+
+    if (tokens.length === 0) {
+      return true;
+    }
+
+    const vowelTokenRatio =
+      tokens.filter((token) => /[aeiou]/.test(token)).length /
+      tokens.length;
+
+    const longNoVowelTokens = tokens.filter(
+      (token) => token.length >= 5 && !/[aeiou]/.test(token)
+    ).length;
+
+    const vowelPoorTokens = tokens.filter((token) => {
+      if (token.length < 4) {
+        return false;
+      }
+      const vowelCount = (token.match(/[aeiou]/g) || []).length;
+      return vowelCount / token.length < 0.35;
+    }).length;
+
+    return (
+      vowelTokenRatio <= 0.4 ||
+      longNoVowelTokens / tokens.length >= 0.25 ||
+      vowelPoorTokens / tokens.length >= 0.4
+    );
+  };
+
   const containsHedging = (content) => {
     const hedgingPhrases = [
       "i think",
@@ -140,15 +174,19 @@ function Interview() {
 
     const wordCount = countWords(trimmed);
 
-    if (wordCount < 25) {
-      return false;
+    if (wordCount === 0) {
+      return true;
     }
 
     if (isRepeatedCharAnswer(trimmed) || isRepeatedTokenAnswer(trimmed)) {
       return true;
     }
 
-    if (wordCount >= 20 && hasLowWordVariety(trimmed)) {
+    if (hasLowVowelDensity(trimmed)) {
+      return true;
+    }
+
+    if (wordCount >= 5 && hasLowWordVariety(trimmed)) {
       return true;
     }
 
@@ -168,6 +206,11 @@ function Interview() {
         (phrase) => lower === phrase || lower.startsWith(`${phrase} `)
       )
     ) {
+      return true;
+    }
+
+    const repeatedWordPattern = /\b([a-z]{2,})\b(?:.*\b\1\b){3,}/i;
+    if (repeatedWordPattern.test(trimmed)) {
       return true;
     }
 
