@@ -58,8 +58,16 @@ function Interview() {
   const [totalSkipped, setTotalSkipped] =
     useState(0);
 
+  const [submittedAnswers, setSubmittedAnswers] =
+    useState([]);
+
   const normalizeText = (text) =>
     text.trim().replace(/\s+/g, " ");
+
+  const normalizeAnswerForComparison = (text) =>
+    normalizeText(text)
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "");
 
   const countWords = (text) =>
     text
@@ -215,6 +223,17 @@ function Interview() {
     }
 
     return false;
+  };
+
+  const isDuplicateAnswer = (content) => {
+    const normalized = normalizeAnswerForComparison(content);
+    if (!normalized) {
+      return false;
+    }
+
+    return submittedAnswers.some(
+      (saved) => saved === normalized
+    );
   };
 
   useEffect(() => {
@@ -457,6 +476,13 @@ function Interview() {
         return;
       }
 
+      if (isDuplicateAnswer(cleaned)) {
+        setError(
+          "This answer appears to be a repeat of an earlier response. Please provide a fresh, domain-relevant answer."
+        );
+        return;
+      }
+
       setError("");
 
       const sessionId =
@@ -516,6 +542,14 @@ function Interview() {
         setTotalSkipped(
           response.totalSkipped || 0
         );
+
+        const normalizedAnswer = normalizeAnswerForComparison(cleaned);
+        if (normalizedAnswer) {
+          setSubmittedAnswers((prev) => [
+            ...prev,
+            normalizedAnswer,
+          ]);
+        }
 
         setAnswer("");
 
