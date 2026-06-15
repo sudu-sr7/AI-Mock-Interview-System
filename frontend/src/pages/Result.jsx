@@ -10,6 +10,11 @@ function Result() {
     );
 
   const [
+    answersForSkipped,
+    setAnswersForSkipped,
+  ] = useState({});
+
+  const [
     showAnalysis,
     setShowAnalysis,
   ] = useState(false);
@@ -420,9 +425,134 @@ function Result() {
                   }
                 </h3>
 
-                <p>
-                  {item.answer}
-                </p>
+                {item.answer ===
+                "[Skipped due to inactivity]" ? (
+                  <div>
+                    <p
+                      style={{
+                        color:
+                          "#999",
+                        fontStyle:
+                          "italic",
+                      }}
+                    >
+                      {
+                        answersForSkipped[
+                          item
+                            .questionNumber
+                        ] ? (
+                          <span
+                            style={{
+                              color:
+                                "#333",
+                              fontStyle:
+                                "normal",
+                            }}
+                          >
+                            {
+                              answersForSkipped[
+                                item
+                                  .questionNumber
+                              ]
+                            }
+                          </span>
+                        ) : (
+                          "[Skipped due to inactivity]"
+                        )
+                      }
+                    </p>
+
+                    {!answersForSkipped[
+                      item
+                        .questionNumber
+                    ] && (
+                      <div
+                        style={{
+                          marginTop:
+                            "10px",
+                        }}
+                      >
+                        <textarea
+                          placeholder="Provide your answer here"
+                          value={
+                            answersForSkipped[
+                              item
+                                .questionNumber
+                            ] || ""
+                          }
+                          onChange={(
+                            e
+                          ) =>
+                            setAnswersForSkipped(
+                              {
+                                ...answersForSkipped,
+                                [item
+                                  .questionNumber
+                                ]:
+                                  e
+                                    .target
+                                    .value,
+                              }
+                            )
+                          }
+                          style={{
+                            width:
+                              "100%",
+                            minHeight:
+                              "80px",
+                            padding:
+                              "10px",
+                            borderRadius:
+                              "5px",
+                            border:
+                              "1px solid #ddd",
+                            fontFamily:
+                              "inherit",
+                          }}
+                        />
+                        <button
+                          onClick={() =>
+                            setAnswersForSkipped(
+                              {
+                                ...answersForSkipped,
+                                [item
+                                  .questionNumber
+                                ]:
+                                  answersForSkipped[
+                                    item
+                                      .questionNumber
+                                  ] ||
+                                  "",
+                              }
+                            )
+                          }
+                          style={{
+                            marginTop:
+                              "10px",
+                            padding:
+                              "8px 16px",
+                            backgroundColor:
+                              "#007bff",
+                            color:
+                              "white",
+                            border:
+                              "none",
+                            borderRadius:
+                              "5px",
+                            cursor:
+                              "pointer",
+                          }}
+                        >
+                          Submit Answer
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p>
+                    {item.answer}
+                  </p>
+                )}
 
                 <h3>
                   Question{" "}
