@@ -23,7 +23,8 @@ export const startInterview = async (
 export const sendAnswer = async (
   sessionId,
   answer,
-  skipped = false
+  skipped = false,
+  retry = false
 ) => {
 
   const response =
@@ -33,6 +34,7 @@ export const sendAnswer = async (
         sessionId,
         answer,
         skipped,
+        retry,
       }
     );
 

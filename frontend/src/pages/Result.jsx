@@ -371,15 +371,21 @@ function Result() {
           Interview Transcript
         </h2>
 
-        {result.transcript?.map(
-          (item, index) => (
+        {result.transcript
+          ?.slice()
+          .sort(
+            (a, b) =>
+              a.questionNumber -
+              b.questionNumber
+          )
+          .map((item) => (
             <div
-              key={index}
+              key={item.questionNumber}
               className="transcript-card"
             >
 
               <h3>
-                Question {index + 1}
+                Question {item.questionNumber}
               </h3>
 
               <p>
@@ -387,7 +393,7 @@ function Result() {
               </p>
 
               <h3>
-                Answer {index + 1}
+                Answer {item.questionNumber}
               </h3>
 
               <p>
@@ -395,8 +401,7 @@ function Result() {
               </p>
 
             </div>
-          )
-        )}
+          ))}
 
       </div>
 

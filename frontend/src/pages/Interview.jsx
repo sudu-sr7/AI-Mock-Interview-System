@@ -426,7 +426,9 @@ function Interview() {
         const response =
           await sendAnswer(
             sessionId,
-            cleaned
+            cleaned,
+            false,
+            isRetryQuestion
           );
 
         if (

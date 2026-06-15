@@ -175,6 +175,7 @@ router.post(
         sessionId,
         answer,
         skipped = false,
+        retry = false,
       } = req.body;
 
       const interview =
@@ -239,7 +240,7 @@ router.post(
       }
 
       // Check if we're in retry mode (answering a previously skipped question)
-      const isRetryAnswer = interview.questionCount >= MAX_QUESTIONS &&
+      const isRetryAnswer = retry &&
         !skipped &&
         finalAnswer !== "[Skipped due to inactivity]";
 
@@ -368,7 +369,7 @@ Have a wonderful day.`;
           question:
             skippedQuestion?.content ||
             "Please answer this question",
-          questionNumber: interview.questionCount,
+          questionNumber,
           isRetryQuestion: true,
           remainingSkipped,
           totalSkipped: interview.skippedCount || 0,
@@ -449,6 +450,7 @@ router.post(
         );
 
       const transcript = [];
+      let questionNumber = 0;
 
       for (
         let i = 0;
@@ -468,8 +470,10 @@ router.post(
             "assistant" &&
           next.role === "user"
         ) {
+          questionNumber += 1;
 
           transcript.push({
+            questionNumber,
             question:
               current.content,
             answer:
@@ -479,6 +483,12 @@ router.post(
         }
 
       }
+
+      transcript.sort(
+        (a, b) =>
+          a.questionNumber -
+          b.questionNumber
+      );
 
       const finalResult = {
         ...result,
