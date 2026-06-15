@@ -60,6 +60,7 @@ function Interview() {
 
   const [submittedAnswers, setSubmittedAnswers] =
     useState([]);
+  const [softWarning, setSoftWarning] = useState("");
 
   const normalizeText = (text) =>
     text.trim().replace(/\s+/g, " ");
@@ -68,6 +69,67 @@ function Interview() {
     normalizeText(text)
       .toLowerCase()
       .replace(/[^a-z0-9\s]/g, "");
+
+  const jaccardSimilarity = (a, b) => {
+    const sa = new Set(
+      a
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean)
+    );
+    const sb = new Set(
+      b
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean)
+    );
+    if (sa.size === 0 || sb.size === 0) return 0;
+    const inter = [...sa].filter((x) => sb.has(x)).length;
+    const uni = new Set([...sa, ...sb]).size;
+    return inter / uni;
+  };
+
+  const checkSoftWarnings = (candidate) => {
+    const trimmed = normalizeText(candidate || "");
+    setSoftWarning("");
+    if (!trimmed) return;
+
+    // similarity to prior answers (non-blocking)
+    const normalized = normalizeAnswerForComparison(trimmed);
+    for (const prev of submittedAnswers) {
+      const sim = jaccardSimilarity(normalized, prev);
+      if (sim >= 0.8 && normalized !== prev) {
+        setSoftWarning(
+          "This answer is very similar to a previous response — consider rephrasing for variety."
+        );
+        return;
+      }
+    }
+
+    // light repetition hint for short answers
+    try {
+      const tokens = trimmed
+        .toLowerCase()
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((t) => t.replace(/[^a-z0-9]/g, ""));
+
+      const counts = {};
+      tokens.forEach((t) => {
+        if (!t || t.length < 4) return;
+        counts[t] = (counts[t] || 0) + 1;
+      });
+
+      const repeated = Object.values(counts).some((c) => c >= 3);
+      if (repeated && countWords(trimmed) < 30) {
+        setSoftWarning(
+          "This answer repeats the same domain words multiple times — try expanding or rephrasing."
+        );
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
 
   const countWords = (text) =>
     text
@@ -220,6 +282,7 @@ function Interview() {
     const suspiciousRepeatedWord = (
       content
     ) => {
+      const wordCountLocal = countWords(content);
       const stopWords = new Set([
         "the",
         "and",
@@ -271,6 +334,8 @@ function Interview() {
         counts[token] =
           (counts[token] || 0) + 1;
       });
+      // Only flag repeated domain words when the answer is short
+      if (wordCountLocal >= 30) return false;
 
       return Object.values(counts).some(
         (count) => count >= 3
@@ -820,9 +885,11 @@ function Interview() {
           rows="8"
           value={answer}
           onChange={(e) => {
-            setAnswer(
-              e.target.value
-            );
+            const v = e.target.value;
+            setAnswer(v);
+
+            // live soft warnings to help the user improve before sending
+            checkSoftWarnings(v);
 
             resetQuestionTimer();
           }}
@@ -841,6 +908,21 @@ function Interview() {
             }}
           >
             {skipMessage}
+          </p>
+        )}
+
+        {softWarning && (
+          <p
+            style={{
+              color: "#92400e",
+              marginTop: "10px",
+              fontWeight: "600",
+              backgroundColor: "#fffbeb",
+              padding: "8px",
+              borderRadius: "6px",
+            }}
+          >
+            {softWarning}
           </p>
         )}
 
