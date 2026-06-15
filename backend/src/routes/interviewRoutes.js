@@ -238,30 +238,28 @@ router.post(
 
       }
 
-      interview.messages.push({
-        role: "user",
-        content:
-          finalAnswer,
-      });
+      // Check if we're in retry mode (answering a previously skipped question)
+      const isRetryAnswer = interview.questionCount >= MAX_QUESTIONS &&
+        !skipped &&
+        finalAnswer !== "[Skipped due to inactivity]";
 
-      // Track skipped question numbers (1-15)
-      if (skipped) {
-        if (!interview.skippedQuestionIndices) {
-          interview.skippedQuestionIndices = [];
+      if (isRetryAnswer) {
+        // Find the first skipped answer and replace it
+        const firstSkippedIndex = interview.messages.findIndex(
+          (msg) =>
+            msg.role === "user" &&
+            msg.content === "[Skipped due to inactivity]"
+        );
+
+        if (firstSkippedIndex !== -1) {
+          interview.messages[firstSkippedIndex].content = finalAnswer;
         }
-        const questionNum = interview.questionCount + 1;
-        interview.skippedQuestionIndices.push(questionNum);
-      } else if (
-        interview.questionCount >= MAX_QUESTIONS &&
-        interview.skippedQuestionIndices &&
-        interview.skippedQuestionIndices.length > 0
-      ) {
-        // If answering a retry question, remove it from skipped list
-        const retriedQuestionNum = interview.skippedQuestionIndices[0];
-        interview.skippedQuestionIndices =
-          interview.skippedQuestionIndices.filter(
-            (qNum) => qNum !== retriedQuestionNum
-          );
+      } else {
+        // Normal flow: add new answer
+        interview.messages.push({
+          role: "user",
+          content: finalAnswer,
+        });
       }
 
       const elapsedMinutes =
@@ -272,14 +270,19 @@ router.post(
         1000 /
         60;
 
-      const unansweredSkipped = interview.skippedQuestionIndices
-        ? interview.skippedQuestionIndices
-        : [];
+      // Check if there are any remaining skipped answers
+      const hasSkippedAnswers =
+        interview.messages.some(
+          (msg) =>
+            msg.role === "user" &&
+            msg.content ===
+              "[Skipped due to inactivity]"
+        );
 
       const shouldFinish =
         interview.questionCount >=
           MAX_QUESTIONS &&
-        unansweredSkipped.length === 0;
+        !hasSkippedAnswers;
 
       if (shouldFinish) {
 
@@ -312,26 +315,57 @@ Have a wonderful day.`;
 
       }
 
-      // If we've answered 15 questions but have unanswered skipped ones
+      // If we've answered 15 questions but have skipped ones, return the first skipped question
       if (
-        interview.questionCount >= MAX_QUESTIONS &&
-        unansweredSkipped.length > 0
+        interview.questionCount >=
+          MAX_QUESTIONS &&
+        hasSkippedAnswers
       ) {
-        // Find the first unanswered skipped question
-        const skippedQuestionNum = unansweredSkipped[0];
-        
-        // Find the question message for this question number
-        let questionIndex = (skippedQuestionNum - 1) * 2;
-        const skippedQuestionMessage = interview.messages[questionIndex];
+        // Find the first skipped answer's corresponding question
+        const firstSkippedAnswerIndex =
+          interview.messages.findIndex(
+            (msg) =>
+              msg.role === "user" &&
+              msg.content ===
+                "[Skipped due to inactivity]"
+          );
+
+        // The question for this answer is the message before it
+        const questionIndex =
+          firstSkippedAnswerIndex - 1;
+        const skippedQuestion =
+          interview.messages[questionIndex];
+
+        // Calculate which question number this is
+        let questionNumber = 0;
+        for (let i = 0; i <= questionIndex; i += 2) {
+          if (
+            interview.messages[i]
+              .role === "assistant"
+          ) {
+            questionNumber++;
+          }
+        }
+
+        // Count remaining skipped answers
+        const remainingSkipped =
+          interview.messages.filter(
+            (msg) =>
+              msg.role === "user" &&
+              msg.content ===
+                "[Skipped due to inactivity]"
+          ).length;
 
         await interview.save();
 
         return res.json({
           completed: false,
-          question: skippedQuestionMessage?.content || "Please answer this question",
-          questionNumber: skippedQuestionNum,
+          question:
+            skippedQuestion?.content ||
+            "Please answer this question",
+          questionNumber,
           isRetryQuestion: true,
-          remainingSkipped: unansweredSkipped.length,
+          remainingSkipped,
         });
       }
 
@@ -345,19 +379,16 @@ Have a wonderful day.`;
 
       interview.messages.push({
         role: "assistant",
-        content:
-          nextQuestion,
+        content: nextQuestion,
       });
 
-      interview.questionCount +=
-        1;
+      interview.questionCount += 1;
 
       await interview.save();
 
       res.json({
         completed: false,
-        question:
-          nextQuestion,
+        question: nextQuestion,
         questionNumber:
           interview.questionCount,
         remainingQuestions:
