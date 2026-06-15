@@ -49,6 +49,12 @@ function Interview() {
   const [autoSubmitting, setAutoSubmitting] =
     useState(false);
 
+  const [isRetryQuestion, setIsRetryQuestion] =
+    useState(false);
+
+  const [remainingSkipped, setRemainingSkipped] =
+    useState(0);
+
   useEffect(() => {
     setQuestion(
       localStorage.getItem(
@@ -227,6 +233,14 @@ function Interview() {
           response.questionNumber
         );
 
+        setIsRetryQuestion(
+          response.isRetryQuestion || false
+        );
+
+        setRemainingSkipped(
+          response.remainingSkipped || 0
+        );
+
         setAnswer("");
 
       } catch (error) {
@@ -314,6 +328,14 @@ function Interview() {
 
         setQuestionNumber(
           response.questionNumber
+        );
+
+        setIsRetryQuestion(
+          response.isRetryQuestion || false
+        );
+
+        setRemainingSkipped(
+          response.remainingSkipped || 0
         );
 
         setAnswer("");
@@ -433,6 +455,27 @@ function Interview() {
         <h3>
           AI Interviewer
         </h3>
+
+        {isRetryQuestion && (
+          <p
+            style={{
+              color:
+                "#f59e0b",
+              marginBottom:
+                "12px",
+              fontWeight:
+                "600",
+              padding:
+                "10px",
+              backgroundColor:
+                "#fef3c7",
+              borderRadius:
+                "5px",
+            }}
+          >
+            ⚠️ This is a previously skipped question. Please provide an answer now. ({remainingSkipped} more to go)
+          </p>
+        )}
 
         <p>{question}</p>
 

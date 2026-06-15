@@ -23,6 +23,11 @@ const interviewSchema = new mongoose.Schema(
       default: 0,
     },
 
+    skippedQuestionIndices: {
+      type: [Number],
+      default: [],
+    },
+
     startedAt: {
       type: Date,
       default: Date.now,

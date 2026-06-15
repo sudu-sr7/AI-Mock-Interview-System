@@ -144,6 +144,7 @@ router.post(
               content: firstQuestion,
             },
           ],
+          skippedQuestionIndices: [],
         });
 
       res.json({
@@ -243,6 +244,21 @@ router.post(
           finalAnswer,
       });
 
+      // Track skipped questions by message index
+      if (skipped) {
+        const answerMessageIndex = interview.messages.length - 1;
+        if (!interview.skippedQuestionIndices) {
+          interview.skippedQuestionIndices = [];
+        }
+        interview.skippedQuestionIndices.push(answerMessageIndex);
+      } else if (interview.skippedQuestionIndices && interview.skippedQuestionIndices.length > 0) {
+        // If this is answering a previously skipped question, remove from skipped list
+        const answerMessageIndex = interview.messages.length - 1;
+        interview.skippedQuestionIndices = interview.skippedQuestionIndices.filter(
+          (idx) => idx !== answerMessageIndex - 1
+        );
+      }
+
       const elapsedMinutes =
         (Date.now() -
           new Date(
@@ -251,11 +267,18 @@ router.post(
         1000 /
         60;
 
+      const hasUnansweredSkipped =
+        interview.skippedQuestionIndices &&
+        interview.skippedQuestionIndices.length > 0;
+
       const shouldFinish =
-        elapsedMinutes >=
+        interview.questionCount >=
+          MAX_QUESTIONS &&
+        !hasUnansweredSkipped &&
+        (elapsedMinutes >=
           INTERVIEW_DURATION ||
         interview.questionCount >=
-          MAX_QUESTIONS;
+          MAX_QUESTIONS);
 
       if (shouldFinish) {
 
@@ -286,6 +309,23 @@ Have a wonderful day.`;
           closingMessage,
         });
 
+      }
+
+      // If we've answered 15 questions but have skipped ones, return a skipped question
+      if (
+        interview.questionCount >= MAX_QUESTIONS &&
+        hasUnansweredSkipped
+      ) {
+        const skippedIndex = interview.skippedQuestionIndices[0];
+        const skippedQuestionMessage = interview.messages[skippedIndex - 1];
+
+        return res.json({
+          completed: false,
+          question: skippedQuestionMessage.content,
+          questionNumber: skippedIndex / 2, // Rough estimate of question number
+          isRetryQuestion: true,
+          remainingSkipped: interview.skippedQuestionIndices.length,
+        });
       }
 
       const nextQuestion =
