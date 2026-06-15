@@ -260,6 +260,11 @@ router.post(
           role: "user",
           content: finalAnswer,
         });
+
+        if (skipped) {
+          interview.skippedCount =
+            (interview.skippedCount || 0) + 1;
+        }
       }
 
       const elapsedMinutes =
@@ -363,9 +368,10 @@ Have a wonderful day.`;
           question:
             skippedQuestion?.content ||
             "Please answer this question",
-          questionNumber,
+          questionNumber: interview.questionCount,
           isRetryQuestion: true,
           remainingSkipped,
+          totalSkipped: interview.skippedCount || 0,
         });
       }
 
@@ -395,6 +401,8 @@ Have a wonderful day.`;
           MAX_QUESTIONS -
           interview.questionCount,
         skipped,
+        totalSkipped:
+          interview.skippedCount || 0,
       });
 
     } catch (error) {

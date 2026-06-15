@@ -55,6 +55,125 @@ function Interview() {
   const [remainingSkipped, setRemainingSkipped] =
     useState(0);
 
+  const [totalSkipped, setTotalSkipped] =
+    useState(0);
+
+  const normalizeText = (text) =>
+    text.trim().replace(/\s+/g, " ");
+
+  const countWords = (text) =>
+    text
+      .split(/\s+/)
+      .filter(Boolean).length;
+
+  const mostFrequentTokenRatio = (tokens) => {
+    const counts = {};
+    tokens.forEach((token) => {
+      counts[token] = (counts[token] || 0) + 1;
+    });
+    return Math.max(...Object.values(counts)) / tokens.length;
+  };
+
+  const isRepeatedCharAnswer = (content) => {
+    const lettersOnly = content.replace(/[^a-zA-Z]/g, "");
+    if (lettersOnly.length < 5) {
+      return false;
+    }
+
+    const counts = {};
+    for (const char of lettersOnly.toLowerCase()) {
+      counts[char] = (counts[char] || 0) + 1;
+    }
+
+    return Math.max(...Object.values(counts)) / lettersOnly.length >= 0.75;
+  };
+
+  const isRepeatedTokenAnswer = (content) => {
+    const tokens = content
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    if (tokens.length < 5) {
+      return false;
+    }
+
+    return mostFrequentTokenRatio(tokens) >= 0.75;
+  };
+
+  const hasLowWordVariety = (content) => {
+    const tokens = content
+      .toLowerCase()
+      .split(/\s+/)
+      .filter(Boolean);
+
+    if (tokens.length === 0) {
+      return true;
+    }
+
+    return new Set(tokens).size / tokens.length <= 0.25;
+  };
+
+  const containsHedging = (content) => {
+    const hedgingPhrases = [
+      "i think",
+      "i guess",
+      "maybe",
+      "not sure",
+      "could",
+      "would",
+      "probably",
+      "sort of",
+      "kind of",
+      "seems",
+      "perhaps",
+    ];
+    const lower = content.toLowerCase();
+    return hedgingPhrases.some((phrase) => lower.includes(phrase));
+  };
+
+  const isGibberishAnswer = (content) => {
+    const trimmed = normalizeText(content);
+    if (!trimmed) {
+      return true;
+    }
+
+    const wordCount = countWords(trimmed);
+
+    if (wordCount < 25) {
+      return false;
+    }
+
+    if (isRepeatedCharAnswer(trimmed) || isRepeatedTokenAnswer(trimmed)) {
+      return true;
+    }
+
+    if (wordCount >= 20 && hasLowWordVariety(trimmed)) {
+      return true;
+    }
+
+    const lower = trimmed.toLowerCase();
+    const vagueShortResponses = [
+      "i think",
+      "i guess",
+      "maybe",
+      "idk",
+      "not sure",
+      "i dont know",
+      "whatever",
+    ];
+
+    if (
+      vagueShortResponses.some(
+        (phrase) => lower === phrase || lower.startsWith(`${phrase} `)
+      )
+    ) {
+      return true;
+    }
+
+    return false;
+  };
+
   useEffect(() => {
     setQuestion(
       localStorage.getItem(
@@ -241,6 +360,10 @@ function Interview() {
           response.remainingSkipped || 0
         );
 
+        setTotalSkipped(
+          response.totalSkipped || 0
+        );
+
         setAnswer("");
 
       } catch (error) {
@@ -281,6 +404,13 @@ function Interview() {
           "Answer must contain at least 25 characters."
         );
 
+        return;
+      }
+
+      if (isGibberishAnswer(cleaned)) {
+        setError(
+          "Please provide a meaningful, complete response instead of filler or repeated text."
+        );
         return;
       }
 
@@ -338,6 +468,10 @@ function Interview() {
           response.remainingSkipped || 0
         );
 
+        setTotalSkipped(
+          response.totalSkipped || 0
+        );
+
         setAnswer("");
 
       } catch (error) {
@@ -374,10 +508,19 @@ function Interview() {
   const secs =
     seconds % 60;
 
-  const progress =
-    (questionNumber / 15) *
-    100;
+  const progress = (() => {
+    if (!isRetryQuestion) {
+      return Math.min((questionNumber / 15) * 100, 100);
+    }
 
+    const totalSteps = 15 + totalSkipped;
+    const completedRetryCount =
+      totalSkipped - remainingSkipped;
+    const currentStep =
+      15 + Math.max(0, completedRetryCount);
+
+    return Math.min((currentStep / totalSteps) * 100, 100);
+  })();
   const timerLabel =
     showPresencePopup
       ? "Are you still there?"

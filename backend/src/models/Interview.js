@@ -23,6 +23,11 @@ const interviewSchema = new mongoose.Schema(
       default: 0,
     },
 
+    skippedCount: {
+      type: Number,
+      default: 0,
+    },
+
     startedAt: {
       type: Date,
       default: Date.now,
