@@ -11,6 +11,8 @@ import {
   scoreInterview,
 } from "../agents/scoringAgent.js";
 
+import { forceGCAndReport } from "../profiling/memoryProfiler.js";
+
 const router = express.Router();
 
 const MIN_QUESTIONS = 10;
@@ -502,6 +504,12 @@ router.post(
         true;
 
       await interview.save();
+
+      interview.messages = [];
+interview.score = null;
+
+// Force GC and log what was freed
+forceGCAndReport("post-interview-finish");
 
       res.json(
         finalResult
